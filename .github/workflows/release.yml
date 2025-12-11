@@ -199,7 +199,7 @@ jobs:
         WORK_DIR=`pwd`
         SDKDIR=`pwd`/VulkanSDK
         export VULKAN_SDK=$SDKDIR
-        ls -la $VULKAN_SDK
+        ls -la -R $VULKAN_SDK
         mkdir build-x86_64 && cd build-x86_64
         cmake -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES="x86_64" \
             -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" \
@@ -407,6 +407,6 @@ jobs:
         PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-windows
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: artifacts/windows/master-windows.zip
+        asset_path: artifacts/windows/ex-windows.zip
         asset_name: windows.zip
         asset_content_type: application/zip
