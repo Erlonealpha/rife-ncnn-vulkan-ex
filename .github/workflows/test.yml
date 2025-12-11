@@ -1,0 +1,152 @@
+name: Test
+
+on: [push]
+
+env: 
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  APPLICATION_NAME: rife-ncnn-vulkan-ex
+
+jobs: 
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      APPNAME: ${{ steps.get_appname.outputs.APPNAME }}
+      VERSION: ${{ steps.get_version.outputs.VERSION }}
+    steps:
+    - name: get-appname
+      id: get_appname
+      run: echo "APPNAME=${APPLICATION_NAME}" >> $GITHUB_OUTPUT
+    - name: get-version
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
+
+  openmp-macos:
+    runs-on: macos-latest
+    steps:
+    - name: cache-openmp
+      id: cache-openmp
+      uses: actions/cache@v4
+      with:
+        path: openmp-install
+        key: openmp-macos-release-11.0.0
+    - name: Select Xcode version
+      run: sudo xcode-select --switch '/Library/Developer/CommandLineTools'
+    
+    - name: checkout
+      if: steps.cache-openmp.outputs.cache-hit != 'true'
+      uses: actions/checkout@v4
+    - name: openmp
+      if: steps.cache-openmp.outputs.cache-hit != 'true'
+      run: |
+        wget https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.0/openmp-11.0.0.src.tar.xz
+        tar -xf openmp-11.0.0.src.tar.xz
+        cd openmp-11.0.0.src
+        sed -i'' -e '/.size __kmp_unnamed_critical_addr/d' runtime/src/z_Linux_asm.S
+        sed -i'' -e 's/__kmp_unnamed_critical_addr/___kmp_unnamed_critical_addr/g' runtime/src/z_Linux_asm.S
+    - name: build-x86_64
+      if: steps.cache-openmp.outputs.cache-hit != 'true'
+      run: |
+        cd openmp-11.0.0.src
+        mkdir build-x86_64 && cd build-x86_64
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install -DCMAKE_OSX_ARCHITECTURES="x86_64" \
+            -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
+        cmake --build . -j 3
+        cmake --build . --target install
+    - name: build-arm64
+      if: steps.cache-openmp.outputs.cache-hit != 'true'
+      run: |
+        cd openmp-11.0.0.src
+        mkdir build-arm64 && cd build-arm64
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install -DCMAKE_OSX_ARCHITECTURES="arm64" \
+            -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
+        cmake --build . -j 3
+        cmake --build . --target install
+    - name: merge-fat-library
+      if: steps.cache-openmp.outputs.cache-hit != 'true'
+      run: |
+        rm -rf $GITHUB_WORKSPACE/openmp-install
+        mkdir -p $GITHUB_WORKSPACE/openmp-install
+        cp -r openmp-11.0.0.src/build-x86_64/install/include $GITHUB_WORKSPACE/openmp-install
+        mkdir -p $GITHUB_WORKSPACE/openmp-install/lib
+        lipo -create openmp-11.0.0.src/build-x86_64/install/lib/libomp.a openmp-11.0.0.src/build-arm64/install/lib/libomp.a -o $GITHUB_WORKSPACE/openmp-install/lib/libomp.a
+    - name: upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: openmp-macos
+        path: openmp-install
+
+  macos:
+    needs: [setup, openmp-macos]
+    runs-on: macos-latest
+    env:
+      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-macos
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    - name: download-openmp-macos
+      uses: actions/download-artifact@v4
+      with:
+        name: openmp-macos
+        path: openmp-macos
+    - name: install-openmp
+      run: |
+        sudo cp openmp-macos/include/* $DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
+        sudo cp openmp-macos/lib/libomp.a $DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib
+    - name: cache-vulkansdk
+      id: cache-vulkansdk
+      uses: actions/cache@v4
+      with:
+        path: "vulkansdk-macos-1.4.335.0"
+        key: vulkansdk-macos-1.4.335.0
+    - name: vulkansdk
+      if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
+      run: |
+        wget https://sdk.lunarg.com/sdk/download/1.4.335.0/mac/vulkansdk-macos-1.4.335.0.zip -O vulkansdk-macos-1.4.335.0.zip
+        unzip vulkansdk-macos-1.4.335.0.zip
+        chmod +x `pwd`/vulkansdk-macOS-1.4.335.0.app/Contents/MacOS/vulkansdk-macOS-1.4.335.0
+        SDKDIR=`pwd`/VulkanSDK
+        `pwd`/vulkansdk-macOS-1.4.335.0.app/Contents/MacOS/vulkansdk-macOS-1.4.335.0 \
+        --root $SDKDIR \
+        --accept-licenses \
+        --default-answer \
+        --confirm-command install \
+        copy_only=1
+    - name: build-x86_64
+      run: |
+        VulkanDIR=`pwd`/VulkanSDK
+        export VULKAN_SDK=$VulkanDIR
+        SDKDIR=$VulkanDIR/macOS
+        INCLUDE_DIR=$SDKDIR/include
+        LIB_DIR=$SDKDIR/lib/MoltenVK.xcframework/macos-arm64_x86_64
+        mkdir build-x86_64 && cd build-x86_64
+        cmake -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES="x86_64" \
+            -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" \
+            -DOpenMP_C_LIB_NAMES="libomp" -DOpenMP_CXX_LIB_NAMES="libomp" \
+            -DOpenMP_libomp_LIBRARY="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libomp.a" \
+            -DVulkan_SDK=$SDKDIR \
+            -DVulkan_INCLUDE_DIR=$INCLUDE_DIR \
+            -DVulkan_LIBRARY=$LIB_DIR/libMoltenVK.a \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_EXE_LINKER_FLAGS="-framework Metal -framework Foundation -framework IOSurface -framework QuartzCore" \
+            ../src
+        cmake --build . -j 3
+    - name: build-arm64
+      run: |
+        VulkanDIR=`pwd`/VulkanSDK
+        export VULKAN_SDK=$VulkanDIR
+        SDKDIR=$VulkanDIR/macOS
+        INCLUDE_DIR=$SDKDIR/include
+        LIB_DIR=$SDKDIR/lib/MoltenVK.xcframework/macos-arm64_x86_64
+        mkdir build-arm64 && cd build-arm64
+        cmake -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES="arm64" \
+            -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" \
+            -DOpenMP_C_LIB_NAMES="libomp" -DOpenMP_CXX_LIB_NAMES="libomp" \
+            -DOpenMP_libomp_LIBRARY="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libomp.a" \
+            -DVulkan_SDK=$SDKDIR \
+            -DVulkan_INCLUDE_DIR=$INCLUDE_DIR \
+            -DVulkan_LIBRARY=$LIB_DIR/libMoltenVK.a \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_EXE_LINKER_FLAGS="-framework Metal -framework Foundation -framework IOSurface -framework QuartzCore" \
+            ../src
+        cmake --build . -j 3
