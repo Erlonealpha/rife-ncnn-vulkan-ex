@@ -251,11 +251,11 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
-        ./vulkansdk-windows-X64-1.4.335.0.exe --root $(pwd)/VulkanSDK --accept-licenses --default-answer --confirm-command install
+        ./vulkansdk-windows-X64-1.4.335.0.exe --root $(Get-Location)/VulkanSDK --accept-licenses --default-answer --confirm-command install
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
-        $env:VULKAN_SDK="$(pwd)/VulkanSDK"
+        $env:VULKAN_SDK="$(Get-Location)/VulkanSDK"
         mkdir build; cd build
         cmake -A x64 ../src
         cmake --build . --config Release -j 2
@@ -294,11 +294,11 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
-        ./vulkansdk-windows-X64-1.4.335.0.exe --root $(pwd)/VulkanSDK --accept-licenses --default-answer --confirm-command install
+        ./vulkansdk-windows-X64-1.4.335.0.exe --root $(Get-Location)/VulkanSDK --accept-licenses --default-answer --confirm-command install
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
-        $env:VULKAN_SDK="$(pwd)/VulkanSDK"
+        $env:VULKAN_SDK="$(Get-Location)/VulkanSDK"
         mkdir build; cd build
         cmake -A arm64 ../src
         cmake --build . --config Release -j 2

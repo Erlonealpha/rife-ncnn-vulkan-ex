@@ -1072,10 +1072,10 @@ int main(int argc, char** argv)
             outputpath = optarg;
             break;
         case 'n':
-            numframe = atoi(optarg);
+            numframe = std::atoi(optarg);
             break;
         case 's':
-            timestep = atof(optarg);
+            timestep = std::atof(optarg);
             break;
         case 'm':
             model = optarg;
@@ -1094,10 +1094,10 @@ int main(int argc, char** argv)
             pattern_format = optarg;
             break;
         case 'p':
-            enable_progress = stoi(optarg);
+            enable_progress = std::stoi(optarg);
             break;
         case 't':
-            progress_interval = stof(optarg);
+            progress_interval = std::stof(optarg);
             break;
         case 'v':
             verbose = 1;
