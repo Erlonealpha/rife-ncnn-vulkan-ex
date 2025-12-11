@@ -1,6 +1,6 @@
 # RIFE ncnn Vulkan EX
 
-This is an extended version of RIFE ncnn Vulkan with additional options and features.
+This is an extended version of [RIFE ncnn Vulkan](https://github.com/nihui/rife-ncnn-vulkan) with additional options and features.
 
 ncnn implementation of RIFE (Real-Time Intermediate Flow Estimation for Video Frame Interpolation).
 
@@ -11,12 +11,13 @@ rife-ncnn-vulkan uses [ncnn project](https://github.com/Tencent/ncnn) as the uni
 - Stream output to stdout support
 - Graceful shutdown on interrupt signal
 - Input image caching for improved performance
+- Breakpoint detection with automatic resumption from checkpoint
 
-## [Download](https://github.com/nihui/rife-ncnn-vulkan/releases)
+## [Download](https://github.com/Erlonealpha/rife-ncnn-vulkan-ex/releases)
 
 Download Windows/Linux/MacOS Executable for Intel/AMD/Nvidia GPU
 
-**https://github.com/nihui/rife-ncnn-vulkan/releases**
+**https://github.com/Erlonealpha/rife-ncnn-vulkan-ex/releases**
 
 This package includes all the binaries and models required. It is portable, so no CUDA or PyTorch runtime environment is needed :)
 
@@ -237,5 +238,6 @@ rife-ncnn-vulkan.exe -m models/rife-anime -x -0 0.png -1 1.png -o out.png
 - https://github.com/webmproject/libwebp for encoding and decoding Webp images on ALL PLATFORMS
 - https://github.com/nothings/stb for decoding and encoding image on Linux / MacOS
 - https://github.com/tronkko/dirent for listing files in directory on Windows
+- https://github.com/nihui/rife-ncnn-vulkan for the original implementation
 - https://github.com/styler00dollar/VapourSynth-RIFE-ncnn-Vulkan for the added models
 - https://github.com/TNTwise/rife-ncnn-vulkan for additional features
