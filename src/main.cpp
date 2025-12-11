@@ -186,8 +186,8 @@ static std::vector<int> parse_optarg_int_array(const char* optarg)
 
 static void print_usage()
 {
-    print("Usage: rife-ncnn-vulkan -0 infile -1 infile1 -o outfile [options]...\n");
-    print("       rife-ncnn-vulkan -i indir -o outdir [options]...\n\n");
+    print("Usage: rife-ncnn-vulkan-ex -0 infile -1 infile1 -o outfile [options]...\n");
+    print("       rife-ncnn-vulkan-ex -i indir -o outdir [options]...\n\n");
     print("  -h                   show this help\n");
     print("  -v                   verbose output\n");
     print("  -0 input0-path       input image0 path (jpg/png/webp)\n");
@@ -1124,7 +1124,7 @@ int main(int argc, char** argv)
 
     gdebug = debug;
 
-    debug_output("rife-ncnn-vulkan start");
+    debug_output("rife-ncnn-vulkan-ex start");
 
     if (((input0path.empty() || input1path.empty()) && inputpath.empty()) || (!raw_output && outputpath.empty()))
     {

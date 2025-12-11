@@ -4,7 +4,7 @@ cmake_policy(SET CMP0091 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-project(rife-ncnn-vulkan)
+project(rife-ncnn-vulkan-ex)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE release CACHE STRING "Choose the type of build" FORCE)
@@ -260,17 +260,17 @@ rife_add_shader(warp_pack8.comp)
 
 add_custom_target(generate-spirv DEPENDS ${SHADER_SPV_HEX_FILES})
 
-add_executable(rife-ncnn-vulkan
+add_executable(rife-ncnn-vulkan-ex
     main.cpp
     rife.cpp
     warp.cpp
 )
 
-target_compile_definitions(rife-ncnn-vulkan PRIVATE
+target_compile_definitions(rife-ncnn-vulkan-ex PRIVATE
     "$<$<CONFIG:Debug>:NO_STDOUT_OUTPUT>"
 )
 
-add_dependencies(rife-ncnn-vulkan generate-spirv)
+add_dependencies(rife-ncnn-vulkan-ex generate-spirv)
 
 set(RIFE_LINK_LIBRARIES ncnn webp ${Vulkan_LIBRARY})
 
@@ -296,4 +296,4 @@ if(USE_STATIC_MOLTENVK)
     )
 endif()
 
-target_link_libraries(rife-ncnn-vulkan ${RIFE_LINK_LIBRARIES})
+target_link_libraries(rife-ncnn-vulkan-ex ${RIFE_LINK_LIBRARIES})

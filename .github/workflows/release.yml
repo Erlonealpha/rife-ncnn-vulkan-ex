@@ -251,7 +251,9 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
-        ./vulkansdk-windows-X64-1.4.335.0.exe install --root $(Get-Location)/VulkanSDK --accept-licenses --default-answer --confirm-command
+        $InstallPath = Join-Path (Get-Location) "VulkanSDK"
+        if (Test-Path $InstallPath) { Remove-Item -Recurse -Force $InstallPath }
+        ./vulkansdk-windows-X64-1.4.335.0.exe --root "$InstallPath" --accept-licenses --default-answer --confirm-command install
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
@@ -294,7 +296,9 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
-        ./vulkansdk-windows-X64-1.4.335.0.exe install --root $(Get-Location)/VulkanSDK --accept-licenses --default-answer --confirm-command
+        $InstallPath = Join-Path (Get-Location) "VulkanSDK"
+        if (Test-Path $InstallPath) { Remove-Item -Recurse -Force $InstallPath }
+        ./vulkansdk-windows-X64-1.4.335.0.exe --root "$InstallPath" --accept-licenses --default-answer --confirm-command install
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
