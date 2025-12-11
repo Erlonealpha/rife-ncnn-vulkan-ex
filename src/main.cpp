@@ -1595,9 +1595,9 @@ int main(int argc, char** argv)
             }
             debug_output("load thread joined\n");
 
-            bool interrupted = g_interrupted.load(std::memory_order_seq_cst);
+            int ev_id = check_event();
 
-            if (!interrupted)
+            if (ev_id == 0)
             {
                 for (int i=0; i<total_jobs_proc; i++)
                 {
@@ -1611,7 +1611,7 @@ int main(int argc, char** argv)
             }
             debug_output("proc thread joined\n");
 
-            if (!interrupted)
+            if (ev_id == 0)
             {
                 for (int i=0; i<jobs_save; i++)
                 {
