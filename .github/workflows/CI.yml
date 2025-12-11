@@ -1,6 +1,24 @@
 name: CI
-on: [push, pull_request]
+
+on: []
+
+env: 
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+  APPLICATION_NAME: rife-ncnn-vulkan-ex
+
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      APPNAME: ${{ steps.get_appname.outputs.APPNAME }}
+      VERSION: ${{ steps.get_version.outputs.VERSION }}
+    steps:
+    - name: get-appname
+      id: get_appname
+      run: echo ::set-output name=APPNAME::${APPLICATION_NAME}
+    - name: get-version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
   windows:
     runs-on: windows-latest
     steps:
