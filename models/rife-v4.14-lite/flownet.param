@@ -1,0 +1,304 @@
+7767517
+302 376
+Input                    in0                      0 1 in0
+Split                    splitncnn_0              1 7 in0 1 2 3 4 5 6 7
+Input                    in1                      0 1 in1
+Split                    splitncnn_1              1 7 in1 9 10 11 12 13 14 15
+Input                    in2                      0 1 in2
+Concat                   cat_0                    2 1 1 9 17 0=0
+Crop                     slice_79                 1 1 17 18 -23310=1,1 -23311=1,0 -23309=1,0
+BinaryOp                 mul_0                    1 1 18 19 0=2 1=1 2=0.000000e+00
+BinaryOp                 add_1                    1 1 19 20 0=0 1=1 2=1.000000e+00
+BinaryOp                 mul_2                    2 1 20 in2 21 0=2
+Split                    splitncnn_2              1 4 21 22 23 24 25
+Convolution              convrelu_2               1 1 15 26 0=32 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=864 9=2
+Convolution              convrelu_3               1 1 26 27 0=32 1=3 -23310=1,2.000000e-01 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=9216 9=2
+Convolution              convrelu_4               1 1 27 28 0=32 1=3 -23310=1,2.000000e-01 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=9216 9=2
+Deconvolution            deconv_24                1 1 28 29 0=8 1=4 11=4 12=1 13=2 14=1 18=0 19=0 2=1 3=2 4=1 5=1 6=4096
+Split                    splitncnn_3              1 4 29 30 31 32 33
+Convolution              convrelu_0               1 1 7 34 0=32 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=864 9=2
+Convolution              convrelu_1               1 1 34 35 0=32 1=3 -23310=1,2.000000e-01 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=9216 9=2
+Convolution              convrelu_5               1 1 35 36 0=32 1=3 -23310=1,2.000000e-01 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=9216 9=2
+Deconvolution            deconv_23                1 1 36 37 0=8 1=4 11=4 12=1 13=2 14=1 18=0 19=0 2=1 3=2 4=1 5=1 6=4096
+Split                    splitncnn_4              1 4 37 38 39 40 41
+Concat                   cat_1                    5 1 2 10 38 30 22 42 0=0
+Interp                   upsample_1               1 1 42 43 0=2 1=1.250000e-01 2=1.250000e-01 6=0
+MemoryData               block0.convblock.0       0 1 44 0=1 1=1 2=192
+Convolution              convrelu_6               1 1 43 45 0=96 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=19872 9=2
+Convolution              convrelu_7               1 1 45 46 0=192 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=165888 9=2
+Split                    splitncnn_5              1 2 46 47 48
+ConvolutionDepthWise     convdw_103               1 1 48 49 0=192 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=165888 7=2
+BinaryOp                 mul_3                    2 1 49 44 50 0=2
+BinaryOp                 add_4                    2 1 50 47 51 0=0
+MemoryData               block0.convblock.1       0 1 52 0=1 1=1 2=192
+ReLU                     leakyrelu_37             1 1 51 53 0=2.000000e-01
+Split                    splitncnn_6              1 2 53 54 55
+ConvolutionDepthWise     convdw_104               1 1 55 56 0=192 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=165888 7=2
+BinaryOp                 mul_5                    2 1 56 52 57 0=2
+BinaryOp                 add_6                    2 1 57 54 58 0=0
+MemoryData               block0.convblock.2       0 1 59 0=1 1=1 2=192
+ReLU                     leakyrelu_38             1 1 58 60 0=2.000000e-01
+Split                    splitncnn_7              1 2 60 61 62
+ConvolutionDepthWise     convdw_105               1 1 62 63 0=192 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=165888 7=2
+BinaryOp                 mul_7                    2 1 63 59 64 0=2
+BinaryOp                 add_8                    2 1 64 61 65 0=0
+MemoryData               block0.convblock.3       0 1 66 0=1 1=1 2=192
+ReLU                     leakyrelu_39             1 1 65 67 0=2.000000e-01
+Split                    splitncnn_8              1 2 67 68 69
+ConvolutionDepthWise     convdw_106               1 1 69 70 0=192 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=165888 7=2
+BinaryOp                 mul_9                    2 1 70 66 71 0=2
+BinaryOp                 add_10                   2 1 71 68 72 0=0
+MemoryData               block0.convblock.4       0 1 73 0=1 1=1 2=192
+ReLU                     leakyrelu_40             1 1 72 74 0=2.000000e-01
+Split                    splitncnn_9              1 2 74 75 76
+ConvolutionDepthWise     convdw_107               1 1 76 77 0=192 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=165888 7=2
+BinaryOp                 mul_11                   2 1 77 73 78 0=2
+BinaryOp                 add_12                   2 1 78 75 79 0=0
+MemoryData               block0.convblock.5       0 1 80 0=1 1=1 2=192
+ReLU                     leakyrelu_41             1 1 79 81 0=2.000000e-01
+Split                    splitncnn_10             1 2 81 82 83
+ConvolutionDepthWise     convdw_108               1 1 83 84 0=192 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=165888 7=2
+BinaryOp                 mul_13                   2 1 84 80 85 0=2
+BinaryOp                 add_14                   2 1 85 82 86 0=0
+MemoryData               block0.convblock.6       0 1 87 0=1 1=1 2=192
+ReLU                     leakyrelu_42             1 1 86 88 0=2.000000e-01
+Split                    splitncnn_11             1 2 88 89 90
+ConvolutionDepthWise     convdw_109               1 1 90 91 0=192 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=165888 7=2
+BinaryOp                 mul_15                   2 1 91 87 92 0=2
+BinaryOp                 add_16                   2 1 92 89 93 0=0
+MemoryData               block0.convblock.7       0 1 94 0=1 1=1 2=192
+ReLU                     leakyrelu_43             1 1 93 95 0=2.000000e-01
+Split                    splitncnn_12             1 2 95 96 97
+ConvolutionDepthWise     convdw_110               1 1 97 98 0=192 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=165888 7=2
+BinaryOp                 mul_17                   2 1 98 94 99 0=2
+BinaryOp                 add_18                   2 1 99 96 100 0=0
+ReLU                     leakyrelu_44             1 1 100 101 0=2.000000e-01
+Deconvolution            deconv_25                1 1 101 102 0=24 1=4 11=4 12=1 13=2 14=1 18=0 19=0 2=1 3=2 4=1 5=1 6=73728
+PixelShuffle             pixelshuffle_75          1 1 102 flow0 0=2 1=0
+Interp                   upsample_2               1 1 flow0 104 0=2 1=8.000000e+00 2=8.000000e+00 6=0
+Split                    splitncnn_13             1 2 104 105 106
+Crop                     slice_80                 1 1 106 107 -23310=1,4 -23311=1,0 -23309=1,0
+BinaryOp                 mul_19                   1 1 107 108 0=2 1=1 2=8.000000e+00
+Split                    splitncnn_14             1 6 108 109 110 111 112 113 114
+Crop                     slice_81                 1 1 114 115 -23310=1,2 -23311=1,0 -23309=1,0
+rife.Warp                 warp_20                   2 1 3 115 116 0=6
+Crop                     slice_82                 1 1 113 117 -23310=1,4 -23311=1,0 -23309=1,2
+rife.Warp                 warp_21                   2 1 11 117 118 0=6
+Crop                     slice_83                 1 1 112 119 -23310=1,2 -23311=1,0 -23309=1,0
+rife.Warp                 warp_22                   2 1 39 119 120 0=6
+Crop                     slice_84                 1 1 111 121 -23310=1,4 -23311=1,0 -23309=1,2
+rife.Warp                 warp_23                   2 1 31 121 122 0=6
+Interp                   upsample_3               1 1 110 123 0=2 1=2.500000e-01 2=2.500000e-01 6=0
+BinaryOp                 div_24                   1 1 123 124 0=3 1=1 2=4.000000e+00
+Crop                     slice_85                 1 1 105 125 -23310=1,5 -23311=1,0 -23309=1,4
+Concat                   cat_2                    6 1 116 118 120 122 23 125 126 0=0
+Interp                   upsample_4               1 1 126 127 0=2 1=2.500000e-01 2=2.500000e-01 6=0
+Concat                   cat_3                    2 1 127 124 128 0=0
+MemoryData               block1.convblock.0       0 1 129 0=1 1=1 2=128
+Convolution              convrelu_8               1 1 128 130 0=64 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=16128 9=2
+Convolution              convrelu_9               1 1 130 131 0=128 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=73728 9=2
+Split                    splitncnn_15             1 2 131 132 133
+ConvolutionDepthWise     convdw_111               1 1 133 134 0=128 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=73728 7=2
+BinaryOp                 mul_25                   2 1 134 129 135 0=2
+BinaryOp                 add_26                   2 1 135 132 136 0=0
+MemoryData               block1.convblock.1       0 1 137 0=1 1=1 2=128
+ReLU                     leakyrelu_47             1 1 136 138 0=2.000000e-01
+Split                    splitncnn_16             1 2 138 139 140
+ConvolutionDepthWise     convdw_112               1 1 140 141 0=128 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=73728 7=2
+BinaryOp                 mul_27                   2 1 141 137 142 0=2
+BinaryOp                 add_28                   2 1 142 139 143 0=0
+MemoryData               block1.convblock.2       0 1 144 0=1 1=1 2=128
+ReLU                     leakyrelu_48             1 1 143 145 0=2.000000e-01
+Split                    splitncnn_17             1 2 145 146 147
+ConvolutionDepthWise     convdw_113               1 1 147 148 0=128 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=73728 7=2
+BinaryOp                 mul_29                   2 1 148 144 149 0=2
+BinaryOp                 add_30                   2 1 149 146 150 0=0
+MemoryData               block1.convblock.3       0 1 151 0=1 1=1 2=128
+ReLU                     leakyrelu_49             1 1 150 152 0=2.000000e-01
+Split                    splitncnn_18             1 2 152 153 154
+ConvolutionDepthWise     convdw_114               1 1 154 155 0=128 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=73728 7=2
+BinaryOp                 mul_31                   2 1 155 151 156 0=2
+BinaryOp                 add_32                   2 1 156 153 157 0=0
+MemoryData               block1.convblock.4       0 1 158 0=1 1=1 2=128
+ReLU                     leakyrelu_50             1 1 157 159 0=2.000000e-01
+Split                    splitncnn_19             1 2 159 160 161
+ConvolutionDepthWise     convdw_115               1 1 161 162 0=128 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=73728 7=2
+BinaryOp                 mul_33                   2 1 162 158 163 0=2
+BinaryOp                 add_34                   2 1 163 160 164 0=0
+MemoryData               block1.convblock.5       0 1 165 0=1 1=1 2=128
+ReLU                     leakyrelu_51             1 1 164 166 0=2.000000e-01
+Split                    splitncnn_20             1 2 166 167 168
+ConvolutionDepthWise     convdw_116               1 1 168 169 0=128 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=73728 7=2
+BinaryOp                 mul_35                   2 1 169 165 170 0=2
+BinaryOp                 add_36                   2 1 170 167 171 0=0
+MemoryData               block1.convblock.6       0 1 172 0=1 1=1 2=128
+ReLU                     leakyrelu_52             1 1 171 173 0=2.000000e-01
+Split                    splitncnn_21             1 2 173 174 175
+ConvolutionDepthWise     convdw_117               1 1 175 176 0=128 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=73728 7=2
+BinaryOp                 mul_37                   2 1 176 172 177 0=2
+BinaryOp                 add_38                   2 1 177 174 178 0=0
+MemoryData               block1.convblock.7       0 1 179 0=1 1=1 2=128
+ReLU                     leakyrelu_53             1 1 178 180 0=2.000000e-01
+Split                    splitncnn_22             1 2 180 181 182
+ConvolutionDepthWise     convdw_118               1 1 182 183 0=128 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=73728 7=2
+BinaryOp                 mul_39                   2 1 183 179 184 0=2
+BinaryOp                 add_40                   2 1 184 181 185 0=0
+ReLU                     leakyrelu_54             1 1 185 186 0=2.000000e-01
+Deconvolution            deconv_26                1 1 186 187 0=24 1=4 11=4 12=1 13=2 14=1 18=0 19=0 2=1 3=2 4=1 5=1 6=49152
+PixelShuffle             pixelshuffle_76          1 1 187 flow1 0=2 1=0
+Interp                   upsample_5               1 1 flow1 189 0=2 1=4.000000e+00 2=4.000000e+00 6=0
+Split                    splitncnn_23             1 2 189 190 191
+Crop                     slice_86                 1 1 191 192 -23310=1,4 -23311=1,0 -23309=1,0
+BinaryOp                 mul_41                   1 1 192 193 0=2 1=1 2=4.000000e+00
+BinaryOp                 add_42                   2 1 109 193 194 0=0
+Split                    splitncnn_24             1 6 194 195 196 197 198 199 200
+Crop                     slice_87                 1 1 200 201 -23310=1,2 -23311=1,0 -23309=1,0
+rife.Warp                 warp_43                   2 1 4 201 202 0=6
+Crop                     slice_88                 1 1 199 203 -23310=1,4 -23311=1,0 -23309=1,2
+rife.Warp                 warp_44                   2 1 12 203 204 0=6
+Crop                     slice_89                 1 1 198 205 -23310=1,2 -23311=1,0 -23309=1,0
+rife.Warp                 warp_45                   2 1 40 205 206 0=6
+Crop                     slice_90                 1 1 197 207 -23310=1,4 -23311=1,0 -23309=1,2
+rife.Warp                 warp_46                   2 1 32 207 208 0=6
+Interp                   upsample_6               1 1 196 209 0=2 1=5.000000e-01 2=5.000000e-01 6=0
+BinaryOp                 div_47                   1 1 209 210 0=3 1=1 2=2.000000e+00
+Crop                     slice_91                 1 1 190 211 -23310=1,5 -23311=1,0 -23309=1,4
+Concat                   cat_4                    6 1 202 204 206 208 24 211 212 0=0
+Interp                   upsample_7               1 1 212 213 0=2 1=5.000000e-01 2=5.000000e-01 6=0
+Concat                   cat_5                    2 1 213 210 214 0=0
+MemoryData               block2.convblock.0       0 1 215 0=1 1=1 2=96
+Convolution              convrelu_10              1 1 214 216 0=48 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=12096 9=2
+Convolution              convrelu_11              1 1 216 217 0=96 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=41472 9=2
+Split                    splitncnn_25             1 2 217 218 219
+ConvolutionDepthWise     convdw_119               1 1 219 220 0=96 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=41472 7=2
+BinaryOp                 mul_48                   2 1 220 215 221 0=2
+BinaryOp                 add_49                   2 1 221 218 222 0=0
+MemoryData               block2.convblock.1       0 1 223 0=1 1=1 2=96
+ReLU                     leakyrelu_57             1 1 222 224 0=2.000000e-01
+Split                    splitncnn_26             1 2 224 225 226
+ConvolutionDepthWise     convdw_120               1 1 226 227 0=96 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=41472 7=2
+BinaryOp                 mul_50                   2 1 227 223 228 0=2
+BinaryOp                 add_51                   2 1 228 225 229 0=0
+MemoryData               block2.convblock.2       0 1 230 0=1 1=1 2=96
+ReLU                     leakyrelu_58             1 1 229 231 0=2.000000e-01
+Split                    splitncnn_27             1 2 231 232 233
+ConvolutionDepthWise     convdw_121               1 1 233 234 0=96 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=41472 7=2
+BinaryOp                 mul_52                   2 1 234 230 235 0=2
+BinaryOp                 add_53                   2 1 235 232 236 0=0
+MemoryData               block2.convblock.3       0 1 237 0=1 1=1 2=96
+ReLU                     leakyrelu_59             1 1 236 238 0=2.000000e-01
+Split                    splitncnn_28             1 2 238 239 240
+ConvolutionDepthWise     convdw_122               1 1 240 241 0=96 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=41472 7=2
+BinaryOp                 mul_54                   2 1 241 237 242 0=2
+BinaryOp                 add_55                   2 1 242 239 243 0=0
+MemoryData               block2.convblock.4       0 1 244 0=1 1=1 2=96
+ReLU                     leakyrelu_60             1 1 243 245 0=2.000000e-01
+Split                    splitncnn_29             1 2 245 246 247
+ConvolutionDepthWise     convdw_123               1 1 247 248 0=96 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=41472 7=2
+BinaryOp                 mul_56                   2 1 248 244 249 0=2
+BinaryOp                 add_57                   2 1 249 246 250 0=0
+MemoryData               block2.convblock.5       0 1 251 0=1 1=1 2=96
+ReLU                     leakyrelu_61             1 1 250 252 0=2.000000e-01
+Split                    splitncnn_30             1 2 252 253 254
+ConvolutionDepthWise     convdw_124               1 1 254 255 0=96 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=41472 7=2
+BinaryOp                 mul_58                   2 1 255 251 256 0=2
+BinaryOp                 add_59                   2 1 256 253 257 0=0
+MemoryData               block2.convblock.6       0 1 258 0=1 1=1 2=96
+ReLU                     leakyrelu_62             1 1 257 259 0=2.000000e-01
+Split                    splitncnn_31             1 2 259 260 261
+ConvolutionDepthWise     convdw_125               1 1 261 262 0=96 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=41472 7=2
+BinaryOp                 mul_60                   2 1 262 258 263 0=2
+BinaryOp                 add_61                   2 1 263 260 264 0=0
+MemoryData               block2.convblock.7       0 1 265 0=1 1=1 2=96
+ReLU                     leakyrelu_63             1 1 264 266 0=2.000000e-01
+Split                    splitncnn_32             1 2 266 267 268
+ConvolutionDepthWise     convdw_126               1 1 268 269 0=96 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=41472 7=2
+BinaryOp                 mul_62                   2 1 269 265 270 0=2
+BinaryOp                 add_63                   2 1 270 267 271 0=0
+ReLU                     leakyrelu_64             1 1 271 272 0=2.000000e-01
+Deconvolution            deconv_27                1 1 272 273 0=24 1=4 11=4 12=1 13=2 14=1 18=0 19=0 2=1 3=2 4=1 5=1 6=36864
+PixelShuffle             pixelshuffle_77          1 1 273 flow2 0=2 1=0
+Interp                   upsample_8               1 1 flow2 275 0=2 1=2.000000e+00 2=2.000000e+00 6=0
+Split                    splitncnn_33             1 2 275 276 277
+Crop                     slice_92                 1 1 277 278 -23310=1,4 -23311=1,0 -23309=1,0
+BinaryOp                 mul_64                   1 1 278 279 0=2 1=1 2=2.000000e+00
+BinaryOp                 add_65                   2 1 195 279 280 0=0
+Split                    splitncnn_34             1 6 280 281 282 283 284 285 286
+Crop                     slice_93                 1 1 286 287 -23310=1,2 -23311=1,0 -23309=1,0
+rife.Warp                 warp_66                   2 1 5 287 288 0=6
+Crop                     slice_94                 1 1 285 289 -23310=1,4 -23311=1,0 -23309=1,2
+rife.Warp                 warp_67                   2 1 13 289 290 0=6
+Crop                     slice_95                 1 1 284 291 -23310=1,2 -23311=1,0 -23309=1,0
+rife.Warp                 warp_68                   2 1 41 291 292 0=6
+Crop                     slice_96                 1 1 283 293 -23310=1,4 -23311=1,0 -23309=1,2
+rife.Warp                 warp_69                   2 1 33 293 294 0=6
+Crop                     slice_97                 1 1 276 295 -23310=1,5 -23311=1,0 -23309=1,4
+Concat                   cat_6                    6 1 288 290 292 294 25 295 296 0=0
+Concat                   cat_7                    2 1 296 281 297 0=0
+MemoryData               block3.convblock.0       0 1 298 0=1 1=1 2=64
+Convolution              convrelu_12              1 1 297 299 0=32 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=8064 9=2
+Convolution              convrelu_13              1 1 299 300 0=64 1=3 -23310=1,2.000000e-01 11=3 12=1 13=2 14=1 2=1 3=2 4=1 5=1 6=18432 9=2
+Split                    splitncnn_35             1 2 300 301 302
+ConvolutionDepthWise     convdw_127               1 1 302 303 0=64 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=18432 7=2
+BinaryOp                 mul_70                   2 1 303 298 304 0=2
+BinaryOp                 add_71                   2 1 304 301 305 0=0
+MemoryData               block3.convblock.1       0 1 306 0=1 1=1 2=64
+ReLU                     leakyrelu_67             1 1 305 307 0=2.000000e-01
+Split                    splitncnn_36             1 2 307 308 309
+ConvolutionDepthWise     convdw_128               1 1 309 310 0=64 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=18432 7=2
+BinaryOp                 mul_72                   2 1 310 306 311 0=2
+BinaryOp                 add_73                   2 1 311 308 312 0=0
+MemoryData               block3.convblock.2       0 1 313 0=1 1=1 2=64
+ReLU                     leakyrelu_68             1 1 312 314 0=2.000000e-01
+Split                    splitncnn_37             1 2 314 315 316
+ConvolutionDepthWise     convdw_129               1 1 316 317 0=64 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=18432 7=2
+BinaryOp                 mul_74                   2 1 317 313 318 0=2
+BinaryOp                 add_75                   2 1 318 315 319 0=0
+MemoryData               block3.convblock.3       0 1 320 0=1 1=1 2=64
+ReLU                     leakyrelu_69             1 1 319 321 0=2.000000e-01
+Split                    splitncnn_38             1 2 321 322 323
+ConvolutionDepthWise     convdw_130               1 1 323 324 0=64 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=18432 7=2
+BinaryOp                 mul_76                   2 1 324 320 325 0=2
+BinaryOp                 add_77                   2 1 325 322 326 0=0
+MemoryData               block3.convblock.4       0 1 327 0=1 1=1 2=64
+ReLU                     leakyrelu_70             1 1 326 328 0=2.000000e-01
+Split                    splitncnn_39             1 2 328 329 330
+ConvolutionDepthWise     convdw_131               1 1 330 331 0=64 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=18432 7=2
+BinaryOp                 mul_78                   2 1 331 327 332 0=2
+BinaryOp                 add_79                   2 1 332 329 333 0=0
+MemoryData               block3.convblock.5       0 1 334 0=1 1=1 2=64
+ReLU                     leakyrelu_71             1 1 333 335 0=2.000000e-01
+Split                    splitncnn_40             1 2 335 336 337
+ConvolutionDepthWise     convdw_132               1 1 337 338 0=64 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=18432 7=2
+BinaryOp                 mul_80                   2 1 338 334 339 0=2
+BinaryOp                 add_81                   2 1 339 336 340 0=0
+MemoryData               block3.convblock.6       0 1 341 0=1 1=1 2=64
+ReLU                     leakyrelu_72             1 1 340 342 0=2.000000e-01
+Split                    splitncnn_41             1 2 342 343 344
+ConvolutionDepthWise     convdw_133               1 1 344 345 0=64 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=18432 7=2
+BinaryOp                 mul_82                   2 1 345 341 346 0=2
+BinaryOp                 add_83                   2 1 346 343 347 0=0
+MemoryData               block3.convblock.7       0 1 348 0=1 1=1 2=64
+ReLU                     leakyrelu_73             1 1 347 349 0=2.000000e-01
+Split                    splitncnn_42             1 2 349 350 351
+ConvolutionDepthWise     convdw_134               1 1 351 352 0=64 1=3 11=3 12=1 13=1 14=1 2=1 3=1 4=1 5=1 6=18432 7=2
+BinaryOp                 mul_84                   2 1 352 348 353 0=2
+BinaryOp                 add_85                   2 1 353 350 354 0=0
+ReLU                     leakyrelu_74             1 1 354 355 0=2.000000e-01
+Deconvolution            deconv_28                1 1 355 356 0=24 1=4 11=4 12=1 13=2 14=1 18=0 19=0 2=1 3=2 4=1 5=1 6=24576
+PixelShuffle             pixelshuffle_78          1 1 356 flow3 0=2 1=0
+Split                    splitncnn_43             1 2 flow3 358 359
+Crop                     slice_98                 1 1 359 360 -23310=1,4 -23311=1,0 -23309=1,0
+BinaryOp                 add_86                   2 1 282 360 361 0=0
+Split                    splitncnn_44             1 2 361 362 363
+Crop                     slice_99                 1 1 358 364 -23310=1,5 -23311=1,0 -23309=1,4
+Sigmoid                  sigmoid_0                1 1 364 365
+Split                    splitncnn_45             1 2 365 366 367
+BinaryOp                 sub_87                   1 1 366 368 0=7 1=1 2=1.000000e+00
+Crop                     slice_100                1 1 363 369 -23310=1,4 -23311=1,0 -23309=1,2
+rife.Warp                 warp_88                   2 1 14 369 370 0=6
+BinaryOp                 mul_89                   2 1 370 368 371 0=2
+Crop                     slice_101                1 1 362 372 -23310=1,2 -23311=1,0 -23309=1,0
+rife.Warp                 warp_90                   2 1 6 372 373 0=6
+BinaryOp                 mul_91                   2 1 373 367 374 0=2
+BinaryOp                 add_92                   2 1 374 371 out0 0=0
