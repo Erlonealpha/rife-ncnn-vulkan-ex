@@ -193,11 +193,13 @@ jobs:
         WORK_DIR=`pwd`
         export VULKAN_SDK=$WORK_DIR/vulkansdk-macos-1.3.290.0/macOS
         mkdir build-x86_64 && cd build-x86_64
+        ls -la $VULKAN_SDK
         cmake -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES="x86_64" \
             -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" \
             -DOpenMP_C_LIB_NAMES="libomp" -DOpenMP_CXX_LIB_NAMES="libomp" \
             -DOpenMP_libomp_LIBRARY="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libomp.a" \
-            -DVulkan_INCLUDE_DIR=$WORK_DIR/vulkansdk-macos-1.3.290.0/MoltenVK/MoltenVK/include \
+            -DVulkan_SDK=$WORK_DIR/vulkansdk-macos-1.3.290.0/macOS \
+            -DVulkan_INCLUDE_DIR=$VULKAN_SDK/include \
             -DVulkan_LIBRARY=$WORK_DIR/vulkansdk-macos-1.3.290.0/MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             ../src
