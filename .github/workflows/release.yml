@@ -128,7 +128,7 @@ jobs:
         cd openmp-11.0.0.src
         mkdir build-x86_64 && cd build-x86_64
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install -DCMAKE_OSX_ARCHITECTURES="x86_64" \
-            -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF ..
+            -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
         cmake --build . -j 3
         cmake --build . --target install
     - name: build-arm64
@@ -137,7 +137,7 @@ jobs:
         cd openmp-11.0.0.src
         mkdir build-arm64 && cd build-arm64
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install -DCMAKE_OSX_ARCHITECTURES="arm64" \
-            -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF ..
+            -DLIBOMP_ENABLE_SHARED=OFF -DLIBOMP_OMPT_SUPPORT=OFF -DLIBOMP_USE_HWLOC=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
         cmake --build . -j 3
         cmake --build . --target install
     - name: merge-fat-library
@@ -251,7 +251,7 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
-        ./vulkansdk-windows-X64-1.4.335.0.exe --root $(Get-Location)/VulkanSDK --accept-licenses --default-answer --confirm-command install
+        ./vulkansdk-windows-X64-1.4.335.0.exe install --root $(Get-Location)/VulkanSDK --accept-licenses --default-answer --confirm-command
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
@@ -294,7 +294,7 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
-        ./vulkansdk-windows-X64-1.4.335.0.exe --root $(Get-Location)/VulkanSDK --accept-licenses --default-answer --confirm-command install
+        ./vulkansdk-windows-X64-1.4.335.0.exe install --root $(Get-Location)/VulkanSDK --accept-licenses --default-answer --confirm-command
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |

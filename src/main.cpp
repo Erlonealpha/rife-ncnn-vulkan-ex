@@ -1112,7 +1112,7 @@ int main(int argc, char** argv)
             uhd_mode = 1;
             break;
         case 'd':
-            debug = stoi(optarg);
+            debug = std::stoi(optarg);
             break;
         case 'h':
         default:
