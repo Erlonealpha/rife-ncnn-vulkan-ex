@@ -66,45 +66,39 @@ public:
 
         lock.lock();
 
-        try 
+        if (_loaded != 0) this->loaded = this->loaded + _loaded;
+        if (_processed != 0) this->processed = this->processed + _processed;
+        if (_saved != 0) 
         {
-            if (_loaded != 0) this->loaded = this->loaded + _loaded;
-            if (_processed != 0) this->processed = this->processed + _processed;
-            if (_saved != 0) 
-            {
-                this->saved = this->saved + _saved;
-                if (!no_update_speed)
-                this->saved_for_speed = this->saved_for_speed + _saved;
-            };
-            
-            if (_saved > 0) 
-            { // no update if no save
-                const double time_now = get_timestamp();
-                const double time_delta = time_now - start_time;
-                const double time_delta_last = time_now - last_update_time;
+            this->saved = this->saved + _saved;
+            if (!no_update_speed)
+            this->saved_for_speed = this->saved_for_speed + _saved;
+        };
+        
+        if (_saved > 0) 
+        { // no update if no save
+            const double time_now = get_timestamp();
+            const double time_delta = time_now - start_time;
+            const double time_delta_last = time_now - last_update_time;
 
-                if ((time_delta_last >= interval && time_delta_last != 0.0 && time_delta != 0.0)
-                    || saved == total) 
-                { // update if interval or finished
-                    this->last_update_time = time_now;
-                    this->speed = (double)saved_for_speed / time_delta;
-                    this->time_elapsed = time_delta;
-                    
-                    if (speed != 0.0) 
-                    {
-                        double time_remaining_ = double(total - saved) / speed;
-                        this->time_remaining = time_remaining_;
-                    }
-
-                    float percent = (float)saved / (float)total * 100.0f;
-                    if (percent > 100.0f) percent = 100.0f;
-
-                    refresh_console(percent, speed, time_elapsed, time_remaining);
+            if ((time_delta_last >= interval && time_delta_last != 0.0 && time_delta != 0.0)
+                || saved == total) 
+            { // update if interval or finished
+                this->last_update_time = time_now;
+                this->speed = (double)saved_for_speed / time_delta;
+                this->time_elapsed = time_delta;
+                
+                if (speed != 0.0) 
+                {
+                    double time_remaining_ = double(total - saved) / speed;
+                    this->time_remaining = time_remaining_;
                 }
+
+                float percent = (float)saved / (float)total * 100.0f;
+                if (percent > 100.0f) percent = 100.0f;
+
+                refresh_console(percent, speed, time_elapsed, time_remaining);
             }
-        } catch (const std::exception& e) 
-        {
-            fprintf(stderr, "progress update failed: %hs\n", e.what());
         }
         lock.unlock();
     }

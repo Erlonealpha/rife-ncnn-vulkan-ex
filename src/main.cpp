@@ -900,11 +900,19 @@ raw_save_stopped:
 
 int get_num(const path_t& path)
 {
+#if _WIN32
     std::wregex num_regex(L"\\d+");
     std::wsmatch match;
     if (std::regex_search(path, match, num_regex)) {
         return std::stoi(match.str());
     }
+#else // _WIN32
+    std::regex num_regex("\\d+");
+    std::smatch match;
+    if (std::regex_search(path, match, num_regex)) {
+        return std::stoi(match.str());
+    }
+#endif // _WIN32
     return 0;
 }
 
@@ -1086,10 +1094,10 @@ int main(int argc, char** argv)
             pattern_format = optarg;
             break;
         case 'p':
-            enable_progress = _wtoi(optarg);
+            enable_progress = stoi(optarg);
             break;
         case 't':
-            progress_interval = _wtof(optarg);
+            progress_interval = stof(optarg);
             break;
         case 'v':
             verbose = 1;
@@ -1104,7 +1112,7 @@ int main(int argc, char** argv)
             uhd_mode = 1;
             break;
         case 'd':
-            debug = _wtoi(optarg);
+            debug = stoi(optarg);
             break;
         case 'h':
         default:

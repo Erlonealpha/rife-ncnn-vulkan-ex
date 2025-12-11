@@ -100,7 +100,7 @@ jobs:
     
 
   openmp-macos:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
     - name: cache-openmp
       id: cache-openmp
@@ -156,7 +156,7 @@ jobs:
 
   macos:
     needs: [setup, openmp-macos]
-    runs-on: macos-13
+    runs-on: macos-latest
     env:
       PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-macos
     steps:
@@ -251,7 +251,7 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
-        ./vulkansdk-windows-X64-1.4.335.0.exe --root `pwd`/VulkanSDK --accept-licenses --default-answer --confirm-command install
+        ./vulkansdk-windows-X64-1.4.335.0.exe --root $(pwd)/VulkanSDK --accept-licenses --default-answer --confirm-command install
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
@@ -294,7 +294,7 @@ jobs:
       if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
-        ./vulkansdk-windows-X64-1.4.335.0.exe --root `pwd`/VulkanSDK --accept-licenses --default-answer --confirm-command install
+        ./vulkansdk-windows-X64-1.4.335.0.exe --root $(pwd)/VulkanSDK --accept-licenses --default-answer --confirm-command install
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
