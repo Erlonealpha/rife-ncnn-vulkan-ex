@@ -1,7 +1,5 @@
 name: CI
 on: [push, pull_request]
-env:
-  DEVELOPER_DIR: /Applications/Xcode_12.4.app/Contents/Developer
 jobs:
   windows:
     runs-on: windows-latest
@@ -20,7 +18,6 @@ jobs:
       run: |
         Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
         7z x -aoa ./vulkansdk-windows-X64-1.4.335.0.exe -oVulkanSDK
-        Remove-Item .\VulkanSDK\Demos, .\VulkanSDK\Samples, .\VulkanSDK\Third-Party, .\VulkanSDK\Tools, .\VulkanSDK\Tools32, .\VulkanSDK\Bin32, .\VulkanSDK\Lib32 -Recurse
     - name: build
       run: |
         $env:VULKAN_SDK="$(pwd)/VulkanSDK"

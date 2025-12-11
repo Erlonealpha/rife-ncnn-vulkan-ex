@@ -1,6 +1,5 @@
 // rife implemented with ncnn library
 
-#include <io.h>
 #include <stdio.h>
 #include <map>
 #include <algorithm>
@@ -15,6 +14,7 @@
 
 
 #if _WIN32
+#include <io.h>
 // image decoder and encoder with wic
 #include "wic_image.h"
 #else // _WIN32
