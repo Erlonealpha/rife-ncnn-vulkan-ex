@@ -1,14 +1,16 @@
+cmake_minimum_required(VERSION 3.9)
+
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 project(rife-ncnn-vulkan)
 
-cmake_minimum_required(VERSION 3.9)
-
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE release CACHE STRING "Choose the type of build" FORCE)
 endif()
+
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 option(USE_SYSTEM_NCNN "build with system libncnn" OFF)
 option(USE_SYSTEM_WEBP "build with system libwebp" OFF)
@@ -126,7 +128,7 @@ if(NOT USE_SYSTEM_NCNN)
     option(WITH_LAYER_input "" ON)
     option(WITH_LAYER_log "" OFF)
     option(WITH_LAYER_lrn "" OFF)
-    option(WITH_LAYER_memorydata "" OFF)
+    option(WITH_LAYER_memorydata "" ON)
     option(WITH_LAYER_mvn "" OFF)
     option(WITH_LAYER_pooling "" ON)
     option(WITH_LAYER_power "" OFF)
@@ -134,7 +136,7 @@ if(NOT USE_SYSTEM_NCNN)
     option(WITH_LAYER_proposal "" OFF)
     option(WITH_LAYER_reduction "" OFF)
     option(WITH_LAYER_relu "" ON)
-    option(WITH_LAYER_reshape "" OFF)
+    option(WITH_LAYER_reshape "" ON)
     option(WITH_LAYER_roipooling "" OFF)
     option(WITH_LAYER_scale "" OFF)
     option(WITH_LAYER_sigmoid "" ON)
@@ -144,17 +146,17 @@ if(NOT USE_SYSTEM_NCNN)
     option(WITH_LAYER_spp "" OFF)
     option(WITH_LAYER_tanh "" OFF)
     option(WITH_LAYER_threshold "" OFF)
-    option(WITH_LAYER_tile "" OFF)
+    option(WITH_LAYER_tile "" ON)
     option(WITH_LAYER_rnn "" OFF)
     option(WITH_LAYER_lstm "" OFF)
     option(WITH_LAYER_binaryop "" ON)
     option(WITH_LAYER_unaryop "" ON)
-    option(WITH_LAYER_convolutiondepthwise "" OFF)
+    option(WITH_LAYER_convolutiondepthwise "" ON)
     option(WITH_LAYER_padding "" ON)
     option(WITH_LAYER_squeeze "" OFF)
-    option(WITH_LAYER_expanddims "" OFF)
+    option(WITH_LAYER_expanddims "" ON)
     option(WITH_LAYER_normalize "" OFF)
-    option(WITH_LAYER_permute "" OFF)
+    option(WITH_LAYER_permute "" ON)
     option(WITH_LAYER_priorbox "" OFF)
     option(WITH_LAYER_detectionoutput "" OFF)
     option(WITH_LAYER_interp "" ON)
@@ -262,6 +264,10 @@ add_executable(rife-ncnn-vulkan
     main.cpp
     rife.cpp
     warp.cpp
+)
+
+target_compile_definitions(rife-ncnn-vulkan PRIVATE
+    "$<$<CONFIG:Debug>:NO_STDOUT_OUTPUT>"
 )
 
 add_dependencies(rife-ncnn-vulkan generate-spirv)

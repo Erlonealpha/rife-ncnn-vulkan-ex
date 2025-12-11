@@ -1,0 +1,6 @@
+/build
+/stream
+*.exe
+*.diff
+
+/.vscode

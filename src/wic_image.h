@@ -183,6 +183,95 @@ RETURN:
     return ret;
 }
 
+// HRESULT wic_encode_image(const wchar_t* filepath, int w, int h, int c, void* bgrdata)
+// {
+//     IWICImagingFactory* factory = 0;
+//     IWICStream* stream = 0;
+//     IWICBitmapEncoder* encoder = 0;
+//     IWICBitmapFrameEncode* frame = 0;
+//     WICPixelFormatGUID format = c == 4 ? GUID_WICPixelFormat32bppBGRA : GUID_WICPixelFormat24bppBGR;
+//     int stride = (w * c * 8 + 7) / 8;
+//     unsigned char* data = 0;
+//     HRESULT hret = E_FAIL;
+
+//     hret = CoCreateInstance(CLSID_WICImagingFactory1, 0, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
+//     if (hret)
+//         goto RETURN;
+
+//     hret = factory->CreateStream(&stream);
+//     if (hret)
+//         goto RETURN;
+
+//     hret = stream->InitializeFromFilename(filepath, GENERIC_WRITE);
+//     if (hret)
+//         goto RETURN;
+
+//     hret = factory->CreateEncoder(GUID_ContainerFormatPng, 0, &encoder);
+//     if (hret)
+//         goto RETURN;
+
+//     hret = encoder->Initialize(stream, WICBitmapEncoderNoCache);
+//     if (hret)
+//         goto RETURN;
+
+//     hret = encoder->CreateNewFrame(&frame, 0);
+//     if (hret)
+//         goto RETURN;
+
+//     hret = frame->Initialize(0);
+//     if (hret)
+//         goto RETURN;
+
+//     hret = frame->SetSize((UINT)w, (UINT)h);
+//     if (hret)
+//         goto RETURN;
+
+//     hret = frame->SetPixelFormat(&format);
+//     if (hret)
+//         goto RETURN;
+
+//     if (!IsEqualGUID(format, c == 4 ? GUID_WICPixelFormat32bppBGRA : GUID_WICPixelFormat24bppBGR))
+//     {
+//         hret = E_FAIL;
+//         goto RETURN;
+//     }
+
+//     data = (unsigned char*)malloc(h * stride);
+//     if (!data)
+//     {
+//         hret = E_OUTOFMEMORY;
+//         goto RETURN;
+//     }
+
+//     for (int y = 0; y < h; y++)
+//     {
+//         const unsigned char* bgrptr = (const unsigned char*)bgrdata + y * w * c;
+//         unsigned char* ptr = data + y * stride;
+//         memcpy(ptr, bgrptr, w * c);
+//     }
+
+//     hret = frame->WritePixels(h, stride, h * stride, data);
+//     if (hret)
+//         goto RETURN;
+
+//     hret = frame->Commit();
+//     if (hret)
+//         goto RETURN;
+
+//     hret = encoder->Commit();
+//     if (hret)
+//         goto RETURN;
+
+// RETURN:
+//     if (data) free(data);
+//     if (encoder) encoder->Release();
+//     if (frame) frame->Release();
+//     if (stream) stream->Release();
+//     if (factory) factory->Release();
+
+//     return hret;
+// }
+
 int wic_encode_jpeg_image(const wchar_t* filepath, int w, int h, int c, void* bgrdata)
 {
     // assert c == 3

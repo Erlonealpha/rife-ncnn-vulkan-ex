@@ -24,7 +24,7 @@
 
 DEFINE_LAYER_CREATOR(Warp)
 
-RIFE::RIFE(int gpuid, bool _tta_mode, bool _tta_temporal_mode, bool _uhd_mode, int _num_threads, bool _rife_v2, bool _rife_v4)
+RIFE::RIFE(int gpuid, bool _tta_mode, bool _tta_temporal_mode, bool _uhd_mode, int _num_threads, bool _rife_v2, bool _rife_v4, int _padding)
 {
     vkdev = gpuid == -1 ? 0 : ncnn::get_gpu_device(gpuid);
 
@@ -44,6 +44,7 @@ RIFE::RIFE(int gpuid, bool _tta_mode, bool _tta_temporal_mode, bool _uhd_mode, i
     num_threads = _num_threads;
     rife_v2 = _rife_v2;
     rife_v4 = _rife_v4;
+    padding = _padding;
 }
 
 RIFE::~RIFE()
@@ -2496,8 +2497,10 @@ int RIFE::process_v4(const ncnn::Mat& in0image, const ncnn::Mat& in1image, float
     opt.staging_vkallocator = staging_vkallocator;
 
     // pad to 32n
-    int w_padded = (w + 31) / 32 * 32;
-    int h_padded = (h + 31) / 32 * 32;
+    int w_padded, h_padded;
+
+    w_padded = (w + padding - 1) / padding * padding;
+    h_padded = (h + padding - 1) / padding * padding;
 
     const size_t in_out_tile_elemsize = opt.use_fp16_storage ? 2u : 4u;
 
@@ -3226,8 +3229,10 @@ int RIFE::process_v4_cpu(const ncnn::Mat& in0image, const ncnn::Mat& in1image, f
     ncnn::Option opt = flownet.opt;
 
     // pad to 32n
-    int w_padded = (w + 31) / 32 * 32;
-    int h_padded = (h + 31) / 32 * 32;
+    int w_padded, h_padded;
+
+    w_padded = (w + padding - 1) / padding * padding;
+    h_padded = (h + padding - 1) / padding * padding;
 
     ncnn::Mat in0;
     ncnn::Mat in1;

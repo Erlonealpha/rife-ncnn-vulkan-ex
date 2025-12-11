@@ -1,11 +1,16 @@
-# RIFE ncnn Vulkan
+# RIFE ncnn Vulkan EX
 
-![CI](https://github.com/nihui/rife-ncnn-vulkan/workflows/CI/badge.svg)
-![download](https://img.shields.io/github/downloads/nihui/rife-ncnn-vulkan/total.svg)
+This is an extended version of RIFE ncnn Vulkan with additional options and features.
 
-ncnn implementation of RIFE, Real-Time Intermediate Flow Estimation for Video Frame Interpolation.
+ncnn implementation of RIFE (Real-Time Intermediate Flow Estimation for Video Frame Interpolation).
 
 rife-ncnn-vulkan uses [ncnn project](https://github.com/Tencent/ncnn) as the universal neural network inference framework.
+
+## Additional Features
+- Simple progress display
+- Stream output to stdout support
+- Graceful shutdown on interrupt signal
+- Input image caching for improved performance
 
 ## [Download](https://github.com/nihui/rife-ncnn-vulkan/releases)
 
@@ -49,20 +54,27 @@ Example below runs on CPU, Discrete GPU, and Integrated GPU all at the same time
 mkdir input_frames
 mkdir output_frames
 
-# find the source fps and format with ffprobe, for example 24fps, AAC
+# Find the source fps and format with ffprobe (e.g., 24fps, AAC)
 ffprobe input.mp4
 
-# extract audio
-ffmpeg -i input.mp4 -vn -acodec copy audio.m4a
-
-# decode all frames
+# Decode all frames
 ffmpeg -i input.mp4 input_frames/frame_%08d.png
 
-# interpolate 2x frame count
+# Interpolate to 2x frame count
 ./rife-ncnn-vulkan -i input_frames -o output_frames
 
-# encode interpolated frames in 48fps with audio
-ffmpeg -framerate 48 -i output_frames/%08d.png -i audio.m4a -c:a copy -crf 20 -c:v libx264 -pix_fmt yuv420p output.mp4
+# Encode interpolated frames at 48fps with audio
+ffmpeg -framerate 48 -i output_frames/%08d.png -i input.mp4 -c:v hevc_nvenc -rc constqp -qp 22 -tune hq -pix_fmt yuv420p -c:a aac -map 0:v -map 1:a output.mp4
+```
+
+### Streaming Output to FFmpeg (Real-time Processing)
+
+For direct streaming output without intermediate frame storage, use the `-r` option:
+
+```shell
+# Method 1: Using raw output (output is BGR24 rawvideo format)
+# Note: replace 1920x1080 with your actual frame resolution
+./rife-ncnn-vulkan -i input_frames -r | ffmpeg -framerate 48 -f rawvideo -pix_fmt bgr24 -s 1920x1080 -i - -i input.mp4 -c:v hevc_nvenc -rc constqp -qp 22 -tune hq -pix_fmt yuv420p -c:a aac -map 0:v -map 1:a output.mp4
 ```
 
 ### Full Usages
@@ -81,19 +93,33 @@ Usage: rife-ncnn-vulkan -0 infile -1 infile1 -o outfile [options]...
   -s time-step         time step (0~1, default=0.5)
   -m model-path        rife model path (default=rife-v2.3)
   -g gpu-id            gpu device to use (-1=cpu, default=auto) can be 0,1,2 for multi-gpu
-  -j load:proc:save    thread count for load/proc/save (default=1:2:2) can be 1:2,2,2:2 for multi-gpu
+  -j load:proc:save    thread count for load/proc/save (default=1:2:2)
+                       (when '-r' specified, save is forced to 1) can be 1:2,2,2:2 for multi-gpu
+  -r                   raw output to stdout (no jpg/png/webp output, supports streaming to ffmpeg via pipe)
   -x                   enable spatial tta mode
   -z                   enable temporal tta mode
   -u                   enable UHD mode
   -f pattern-format    output image filename pattern format (%08d.jpg/png/webp, default=ext/%08d.png)
+  -p progress          show progress (0=off, 1=on, default=1)
+  -t progress-interval progress update interval in seconds (default=0.5)
+  -d                   enable debug output
 ```
 
 - `input0-path`, `input1-path` and `output-path` accept file path
 - `input-path` and `output-path` accept file directory
 - `num-frame` = target frame count
 - `time-step` = interpolation time
-- `load:proc:save` = thread count for the three stages (image decoding + rife interpolation + image encoding), using larger values may increase GPU usage and consume more GPU memory. You can tune this configuration with "4:4:4" for many small-size images, and "2:2:2" for large-size images. The default setting usually works fine for most situations. If you find that your GPU is hungry, try increasing thread count to achieve faster processing.
-- `pattern-format` = the filename pattern and format of the image to be output, png is better supported, however webp generally yields smaller file sizes, both are losslessly encoded
+- `load:proc:save` = thread count for load/processing/save stages. Larger values increase GPU memory usage. Recommended: "4:4:4" for many small images, "2:2:2" for large images. Note: save threads are forced to 1 when using raw output (-r flag).
+- `raw-output` = stream processing results to stdout in BGR24 format without writing image files. This enables real-time streaming to video processing tools like FFmpeg via pipe operator "|".
+- `pattern-format` = output filename pattern and format (png/webp/jpg). PNG has better support, WebP yields smaller files, both are losslessly encoded.
+
+### Performance Tips
+
+- **Thread Tuning**: The `-j load:proc:save` parameter controls resource allocation. Use higher values if your GPU has spare capacity, lower values if memory is limited.
+- **Image Caching**: Input images are cached to avoid redundant loading, especially beneficial for multi-frame interpolation (e.g., 8x upsampling).
+- **Raw Output Mode**: Using `-r` for streaming avoids intermediate file I/O, enabling faster real-time processing when piping to FFmpeg.
+
+### Troubleshooting
 
 If you encounter a crash or error, try upgrading your GPU driver:
 
@@ -147,7 +173,36 @@ cmake --build . -j 4
 | rife-v3.0 | 3.0 |
 | rife-v3.1 | 3.1 |
 | rife-v4 | 4.0 |
+| rife-v4.1 | 4.1 |
+| rife-v4.2 | 4.2 | 
+| rife-v4.3 | 4.3 |
+| rife-v4.4 | 4.4 |
+| rife-v4.5 | 4.5 |
 | rife-v4.6 | 4.6 |
+| rife-v4.7 | 4.7 |
+| rife-v4.8 | 4.8 |
+| rife-v4.9 | 4.9 |
+| rife-v4.10 | 4.10 |
+| rife-v4.11 | 4.11 |
+| rife-v4.12 | 4.12 |
+| rife-v4.12-lite | 4.12-lite |
+| rife-v4.13 | 4.13 |
+| rife-v4.13-lite | 4.13-lite |
+| rife-v4.14 | 4.14 |
+| rife-v4.14-lite | 4.14-lite |
+| rife-v4.15 | 4.15 |
+| rife-v4.15-lite | 4.15-lite |
+| rife-v4.16-lite | 4.16-lite |
+| rife-v4.17 | 4.17 |
+| rife-v4.17-lite | 4.17-lite |
+| rife-v4.18 | 4.18 |
+| rife-v4.19 | 4.19 |
+| rife-v4.20 | 4.20 |
+| rife-v4.21 | 4.21 |
+| rife-v4.22 | 4.22 |
+| rife-v4.22-lite | 4.22-lite |
+| rife-v4.24 | 4.24 |
+| rife-v4.25 | 4.25 |
 
 ## Sample Images
 
@@ -182,3 +237,5 @@ rife-ncnn-vulkan.exe -m models/rife-anime -x -0 0.png -1 1.png -o out.png
 - https://github.com/webmproject/libwebp for encoding and decoding Webp images on ALL PLATFORMS
 - https://github.com/nothings/stb for decoding and encoding image on Linux / MacOS
 - https://github.com/tronkko/dirent for listing files in directory on Windows
+- https://github.com/styler00dollar/VapourSynth-RIFE-ncnn-Vulkan for the added models
+- https://github.com/TNTwise/rife-ncnn-vulkan for additional features
