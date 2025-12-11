@@ -196,36 +196,40 @@ jobs:
         copy_only=1
     - name: build-x86_64
       run: |
-        WORK_DIR=`pwd`
-        SDKDIR=`pwd`/VulkanSDK
-        export VULKAN_SDK=$SDKDIR
-        ls -la -R $VULKAN_SDK
+        VulkanDIR=`pwd`/VulkanSDK
+        export VULKAN_SDK=$VulkanDIR
+        SDKDIR=$VulkanDIR/macOS
+        INCLUDE_DIR=$SDKDIR/include/MoltenVK
+        LIB_DIR=$SDKDIR/lib/MoltenVK.xcframework/macos-arm64_x86_64
         mkdir build-x86_64 && cd build-x86_64
         cmake -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES="x86_64" \
             -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" \
             -DOpenMP_C_LIB_NAMES="libomp" -DOpenMP_CXX_LIB_NAMES="libomp" \
             -DOpenMP_libomp_LIBRARY="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libomp.a" \
-            -DVulkan_SDK=$SDKDIR/macOS \
-            -DVulkan_INCLUDE_DIR=$SDKDIR/MoltenVK/include \
-            -DVulkan_LIBRARY=$SDKDIR/MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a \
+            -DVulkan_SDK=$SDKDIR \
+            -DVulkan_INCLUDE_DIR=$INCLUDE_DIR \
+            -DVulkan_LIBRARY=$LIB_DIR/libMoltenVK.a \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_EXE_LINKER_FLAGS="-framework Metal -framework Foundation -framework IOSurface -framework QuartzCore" \
             ../src
         cmake --build . -j 3
     - name: build-arm64
       run: |
-        WORK_DIR=`pwd`
-        SDKDIR=`pwd`/VulkanSDK
-        export VULKAN_SDK=$SDKDIR
-        ls -la $VULKAN_SDK
+        VulkanDIR=`pwd`/VulkanSDK
+        export VULKAN_SDK=$VulkanDIR
+        SDKDIR=$VulkanDIR/macOS
+        INCLUDE_DIR=$SDKDIR/include/MoltenVK
+        LIB_DIR=$SDKDIR/lib/MoltenVK.xcframework/macos-arm64_x86_64
         mkdir build-arm64 && cd build-arm64
         cmake -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES="arm64" \
             -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" \
             -DOpenMP_C_LIB_NAMES="libomp" -DOpenMP_CXX_LIB_NAMES="libomp" \
             -DOpenMP_libomp_LIBRARY="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libomp.a" \
-            -DVulkan_SDK=$SDKDIR/macOS \
-            -DVulkan_INCLUDE_DIR=$SDKDIR/MoltenVK/include \
-            -DVulkan_LIBRARY=$SDKDIR/MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a \
+            -DVulkan_SDK=$SDKDIR \
+            -DVulkan_INCLUDE_DIR=$INCLUDE_DIR \
+            -DVulkan_LIBRARY=$LIB_DIR/libMoltenVK.a \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_EXE_LINKER_FLAGS="-framework Metal -framework Foundation -framework IOSurface -framework QuartzCore" \
             ../src
         cmake --build . -j 3
   #  - name: build-arm64
@@ -356,10 +360,11 @@ jobs:
       run: |
           version=$(python -c "from datetime import datetime; print(str(datetime.now()).split(' ')[0].replace('-',''))")
           tag=$(python -c "import random, string; print(''.join(random.choices(string.ascii_letters, k=8)))")
-          echo "Version=$version"
-          echo "Tag=$version"
-          echo "::set-output name=version::$version"
-          echo "::set-output name=tag::$version"
+          ver=$version-$tag
+          echo "Version=$ver"
+          echo "Tag=$tag"
+          echo "version=$ver" >> $GITHUB_OUTPUT
+          echo "tag=$ver" >> $GITHUB_OUTPUT
     - name: create-release
       id: create_release
       uses: actions/create-release@v1
