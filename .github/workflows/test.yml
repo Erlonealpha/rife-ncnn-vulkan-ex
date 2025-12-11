@@ -195,4 +195,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows
-        path: D:\a\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex-refs\heads\ex-windows.zip
+        path: D:\a\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex.zip
