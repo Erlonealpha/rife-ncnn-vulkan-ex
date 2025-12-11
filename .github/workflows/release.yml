@@ -192,6 +192,7 @@ jobs:
             -DOpenMP_libomp_LIBRARY="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libomp.a" \
             -DVulkan_INCLUDE_DIR=`pwd`/../vulkansdk-macos-1.3.290.0/MoltenVK/include \
             -DVulkan_LIBRARY=`pwd`/../vulkansdk-macos-1.3.290.0/MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             ../src
         cmake --build . -j 3
     - name: build-arm64
@@ -205,6 +206,7 @@ jobs:
             -DOpenMP_libomp_LIBRARY="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libomp.a" \
             -DVulkan_INCLUDE_DIR=`pwd`/../vulkansdk-macos-1.3.290.0/MoltenVK/include \
             -DVulkan_LIBRARY=`pwd`/../vulkansdk-macos-1.3.290.0/MoltenVK/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             ../src
         cmake --build . -j 3
   #  - name: build-arm64
@@ -257,7 +259,7 @@ jobs:
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
-        $env:VULKAN_SDK="$(Get-Location)/VulkanSDK"
+        $env:VULKAN_SDK= Join-Path (Get-Location) "VulkanSDK"
         mkdir build; cd build
         cmake -A x64 ../src
         cmake --build . --config Release -j 2
@@ -275,7 +277,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows
-        path: D:\a\rife-ncnn-vulkan\rife-ncnn-vulkan\rife-ncnn-vulkan-refs\heads\master-windows.zip
+        path: D:\a\rife-ncnn-vulkan\rife-ncnn-vulkan\rife-ncnn-vulkan-ex-refs\heads\ex-windows.zip
 
   windows-arm:
     needs: [setup]
@@ -302,9 +304,9 @@ jobs:
         rm vulkansdk-windows-X64-1.4.335.0.exe
     - name: build
       run: |
-        $env:VULKAN_SDK="$(Get-Location)/VulkanSDK"
+        $env:VULKAN_SDK = Join-Path (Get-Location) "VulkanSDK"
         mkdir build; cd build
-        cmake -A arm64 ../src
+        cmake -A arm64 -DVULKAN_SDK="$env:VULKAN_SDK" ../src
         cmake --build . --config Release -j 2
     - name: package
       run: |
