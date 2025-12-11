@@ -262,6 +262,7 @@ jobs:
     runs-on: windows-latest
     env:
       PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-windows
+      PACKAGENAME_WIN: ${{ needs.setup.outputs.APPNAME }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -288,13 +289,13 @@ jobs:
         cmake --build . --config Release -j 2
     - name: package
       run: |
-        mkdir ${{ env.PACKAGENAME }}
-        Copy-Item -Verbose -Path "README.md" -Destination "${{ env.PACKAGENAME }}"
-        Copy-Item -Verbose -Path "LICENSE" -Destination "${{ env.PACKAGENAME }}"
-        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination "${{ env.PACKAGENAME }}"
-        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination "${{ env.PACKAGENAME }}"
-        Copy-Item -Verbose -Recurse -Path "models\*" -Destination "${{ env.PACKAGENAME }}"
-        7z a -r ${{ env.PACKAGENAME }}.zip ${{ env.PACKAGENAME }}
+        mkdir ${{ env.PACKAGENAME_WIN }}
+        Copy-Item -Verbose -Path "README.md" -Destination "${{ env.PACKAGENAME_WIN }}"
+        Copy-Item -Verbose -Path "LICENSE" -Destination "${{ env.PACKAGENAME_WIN }}"
+        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination "${{ env.PACKAGENAME_WIN }}"
+        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination "${{ env.PACKAGENAME_WIN }}"
+        Copy-Item -Verbose -Recurse -Path "models\*" -Destination "${{ env.PACKAGENAME_WIN }}\models"
+        7z a -r ${{ env.PACKAGENAME_WIN }}.zip ${{ env.PACKAGENAME_WIN }}
 
     - name: upload
       uses: actions/upload-artifact@v4

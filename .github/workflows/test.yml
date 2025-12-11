@@ -1,6 +1,6 @@
 name: Test
 
-on: []
+on: [push]
 
 env: 
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
@@ -150,3 +150,49 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-framework Metal -framework Foundation -framework IOSurface -framework QuartzCore" \
             ../src
         cmake --build . -j 3
+  
+  windows:
+    needs: [setup]
+    runs-on: windows-latest
+    env:
+      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-windows
+      PACKAGENAME_WIN: ${{ needs.setup.outputs.APPNAME }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    - name: cache-vulkansdk
+      id: cache-vulkansdk
+      uses: actions/cache@v4
+      with:
+        path: "VulkanSDK"
+        key: vulkansdk-windows-X64-1.4.335.0
+    - name: vulkansdk
+      if: steps.cache-vulkansdk.outputs.cache-hit != 'true'
+      run: |
+        Invoke-WebRequest -Uri https://sdk.lunarg.com/sdk/download/1.4.335.0/windows/vulkansdk-windows-X64-1.4.335.0.exe -OutFile vulkansdk-windows-X64-1.4.335.0.exe
+        $InstallPath = Join-Path (Get-Location) "VulkanSDK"
+        if (Test-Path $InstallPath) { Remove-Item -Recurse -Force $InstallPath }
+        ./vulkansdk-windows-X64-1.4.335.0.exe --root "$InstallPath" --accept-licenses --default-answer --confirm-command install
+        rm vulkansdk-windows-X64-1.4.335.0.exe
+    - name: build
+      run: |
+        $env:VULKAN_SDK = (Join-Path (Get-Location) "VulkanSDK")
+        mkdir build; cd build
+        cmake -A x64 -DVULKAN_SDK="$env:VULKAN_SDK" ../src
+        cmake --build . --config Release -j 2
+    - name: package
+      run: |
+        mkdir ${{ env.PACKAGENAME_WIN }}
+        Copy-Item -Verbose -Path "README.md" -Destination "${{ env.PACKAGENAME_WIN }}"
+        Copy-Item -Verbose -Path "LICENSE" -Destination "${{ env.PACKAGENAME_WIN }}"
+        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination "${{ env.PACKAGENAME_WIN }}"
+        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination "${{ env.PACKAGENAME_WIN }}"
+        Copy-Item -Verbose -Recurse -Path "models\*" -Destination "${{ env.PACKAGENAME_WIN }}\models"
+        7z a -r ${{ env.PACKAGENAME_WIN }}.zip ${{ env.PACKAGENAME_WIN }}
+
+    - name: upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows
+        path: D:\a\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex-refs\heads\ex-windows.zip
