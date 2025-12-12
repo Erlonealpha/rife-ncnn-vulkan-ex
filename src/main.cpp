@@ -186,27 +186,27 @@ static std::vector<int> parse_optarg_int_array(const char* optarg)
 
 static void print_usage()
 {
-    print("Usage: rife-ncnn-vulkan-ex -0 infile -1 infile1 -o outfile [options]...\n");
-    print("       rife-ncnn-vulkan-ex -i indir -o outdir [options]...\n\n");
-    print("  -h                   show this help\n");
-    print("  -v                   verbose output\n");
-    print("  -0 input0-path       input image0 path (jpg/png/webp)\n");
-    print("  -1 input1-path       input image1 path (jpg/png/webp)\n");
-    print("  -i input-path        input image directory (jpg/png/webp)\n");
-    print("  -o output-path       output image path (jpg/png/webp) or directory\n");
-    print("  -n num-frame         target frame count (default=N*2)\n");
-    print("  -s time-step         time step (0~1, default=0.5)\n");
-    print("  -m model-path        rife model path (default=rife-v2.3)\n");
-    print("  -g gpu-id            gpu device to use (-1=cpu, default=auto) can be 0,1,2 for multi-gpu\n");
-    print("  -j load:proc:save    thread count for load/proc/save (default=1:2:2)\n");
-    print("                       (when '-r' specified, save is forced to 1) can be 1:2,2,2:2 for multi-gpu\n");
-    print("  -r                   raw output to stdout (no jpg/png/webp output)\n");
-    print("  -x                   enable spatial tta mode\n");
-    print("  -z                   enable temporal tta mode\n");
-    print("  -u                   enable UHD mode\n");
-    print("  -f pattern-format    output image filename pattern format (%%08d.jpg/png/webp, default=ext/%%08d.png)\n");
-    print("  -p progress          show progress (0=off, 1=on, default=1)\n");
-    print("  -t progress-interval progress update interval in seconds (default=0.5)\n");
+    print("Usage: rife-ncnn-vulkan-ex -0 infile -1 infile1 -o outfile [options]...");
+    print("       rife-ncnn-vulkan-ex -i indir -o outdir [options]...\n");
+    print("  -h                   show this help");
+    print("  -v                   verbose output");
+    print("  -0 input0-path       input image0 path (jpg/png/webp)");
+    print("  -1 input1-path       input image1 path (jpg/png/webp)");
+    print("  -i input-path        input image directory (jpg/png/webp)");
+    print("  -o output-path       output image path (jpg/png/webp) or directory");
+    print("  -n num-frame         target frame count (default=N*2)");
+    print("  -s time-step         time step (0~1, default=0.5)");
+    print("  -m model-path        rife model path (default=rife-v2.3)");
+    print("  -g gpu-id            gpu device to use (-1=cpu, default=auto) can be 0,1,2 for multi-gpu");
+    print("  -j load:proc:save    thread count for load/proc/save (default=1:2:2)");
+    print("                       (when '-r' specified, save is forced to 1) can be 1:2,2,2:2 for multi-gpu");
+    print("  -r                   raw output to stdout (no jpg/png/webp output)");
+    print("  -x                   enable spatial tta mode");
+    print("  -z                   enable temporal tta mode");
+    print("  -u                   enable UHD mode");
+    print("  -f pattern-format    output image filename pattern format (%%08d.jpg/png/webp, default=ext/%%08d.png)");
+    print("  -p progress          show progress (0=off, 1=on, default=1)");
+    print("  -t progress-interval progress update interval in seconds (default=0.5)");
     print("  -d                   enable debug output\n");
 }
 
@@ -487,11 +487,26 @@ public:
         max_size = size;
     }
 
+    void resize(int size)
+    {
+        lock.lock();
+        max_size = size;
+        lock.unlock();
+    }
+
+    int size()
+    {
+        lock.lock();
+        int ret = (int)tasks.size();
+        lock.unlock();
+        return ret;
+    }
+
     void put(const T& v)
     {
         lock.lock();
 
-        while (tasks.size() >= 8 && max_size != 0)
+        while (tasks.size() >= max_size && max_size != 0)
         {
             condition.wait(lock);
         }
@@ -643,16 +658,16 @@ void* load(void* args)
     
             int ret0 = imagepool.acquire(v.in0path, v.in0image);
             int ret1 = imagepool.acquire(v.in1path, v.in1image);
-            {
-                int r = check_event();
-                if (r == 1)      goto load_interrupted;
-                else if (r == 2) goto load_stopped;
-            }
     
             if (ret0 == 0 && ret1 == 0)
             {
                 v.outimage = ncnn::Mat(v.in0image.w, v.in0image.h, (size_t)3, 3);
                 toproc.put(v);
+                {
+                    int r = check_event();
+                    if (r == 1)      goto load_interrupted;
+                    else if (r == 2) goto load_stopped;
+                }
             }
             else
             {
@@ -767,6 +782,7 @@ void* save(void* args)
                 #endif
             }
         }
+        v.outimage.release();
         progress.update(0, 0, 1);
         int r = check_event();
         if (r == 1)      goto save_interrupted;
@@ -892,9 +908,18 @@ void* raw_save(void* args)
     debug_output("raw save thread finished");
 raw_save_interrupted:
     debug_output("raw save thread interrupted");
-    return 0;
+    goto cleanup;
 raw_save_stopped:
     debug_output("raw save thread stopped");
+    goto cleanup;
+cleanup:
+    for (int i = 0; i < pending_images.size(); i++)
+    {
+        if (!pending_images[i].empty())
+        {
+            pending_images[i].release();
+        }
+    }
     return 0;
 }
 
@@ -1426,8 +1451,6 @@ int main(int argc, char** argv)
     int cpu_count = std::max(1, ncnn::get_cpu_count());
     jobs_load = std::min(jobs_load, cpu_count);
     jobs_save = std::min(jobs_save, cpu_count);
-    if (raw_output)
-        jobs_save = 1;
 
     int gpu_count = ncnn::get_gpu_count();
     for (int i=0; i<use_gpu_count; i++)
@@ -1453,6 +1476,27 @@ int main(int argc, char** argv)
         {
             total_jobs_proc += jobs_proc[i];
         }
+    }
+
+    if (raw_output)
+    {
+        jobs_save = 1;
+        if (total_jobs_proc > torawsave.size())
+        {
+            torawsave.resize(total_jobs_proc);
+        }
+    }
+    else if (jobs_save > tosave.size())
+    {
+        tosave.resize(jobs_save);
+    }
+    if (total_jobs_proc > toproc.size())
+    {
+        toproc.resize(total_jobs_proc);
+    }
+    if (jobs_load > toload.size())
+    {
+        toload.resize(jobs_load);
     }
 
     {
