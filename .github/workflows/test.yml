@@ -45,13 +45,13 @@ jobs:
         export VULKAN_SDK=`pwd`/1.4.335.0/x86_64 && cd build && cmake ../src && cmake --build . -j 2
     - name: package
       run: |
-        package_name=${{needs.setup.outputs.APPNAME}}/${{env.PACKAGENAME}}
+        package_name=${{env.PACKAGENAME}}/${{needs.setup.outputs.APPNAME}}
         mkdir -p ${package_name}
         cp README.md LICENSE ${package_name}
         cp build/${{ needs.setup.outputs.APPNAME }} ${package_name}
         strip -g ${package_name}/${{ needs.setup.outputs.APPNAME }}
         cp -r models/* ${package_name}
-        zip -9 -r ${{env.PACKAGENAME}}.zip ${{needs.setup.outputs.APPNAME}}
+        zip -9 -r ${{env.PACKAGENAME}}.zip ${{env.PACKAGENAME}}
     - name: log
       run: |
           ls
@@ -60,8 +60,8 @@ jobs:
     - name: upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{env.PACKAGENAME}}
-        path: ${{env.PACKAGENAME}}.zip
+        name: ubuntu
+        path: ubuntu.zip
 
   ubuntu-arm:
     needs: [setup]
@@ -82,13 +82,13 @@ jobs:
         cd build && cmake ../src && cmake --build . -j 2
     - name: package
       run: |
-        package_name=${{needs.setup.outputs.APPNAME}}/${{env.PACKAGENAME}}
+        package_name=${{env.PACKAGENAME}}/${{needs.setup.outputs.APPNAME}}
         mkdir -p ${package_name}
         cp README.md LICENSE ${package_name}
         cp build/${{ needs.setup.outputs.APPNAME }} ${package_name}
         strip -g ${package_name}/${{ needs.setup.outputs.APPNAME }}
         cp -r models/* ${package_name}
-        zip -9 -r ${{env.PACKAGENAME}}.zip ${{needs.setup.outputs.APPNAME}}
+        zip -9 -r ${{env.PACKAGENAME}}.zip ${{env.PACKAGENAME}}
     - name: log
       run: |
           ls
@@ -97,8 +97,8 @@ jobs:
     - name: upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{env.PACKAGENAME}}
-        path: ${{env.PACKAGENAME}}.zip
+        name: ubuntu-arm
+        path: ubuntu-arm.zip
     
 
   openmp-macos:
@@ -233,18 +233,18 @@ jobs:
         cmake --build . -j 3
     - name: package
       run: |
-        package_name=${{needs.setup.outputs.APPNAME}}/${{env.PACKAGENAME}}
+        package_name=${{env.PACKAGENAME}}/${{needs.setup.outputs.APPNAME}}
         mkdir -p ${package_name}
         cp README.md LICENSE ${package_name}/
         lipo -create build-x86_64/${{ needs.setup.outputs.APPNAME }} build-arm64/${{ needs.setup.outputs.APPNAME }} -o ${package_name}/${{ needs.setup.outputs.APPNAME }}        
         strip ${package_name}/${{ needs.setup.outputs.APPNAME }}
         cp -r models/* ${package_name}
-        zip -9 -r ${{env.PACKAGENAME}}.zip ${{needs.setup.outputs.APPNAME}}
+        zip -9 -r ${{env.PACKAGENAME}}.zip ${{env.PACKAGENAME}}
     - name: upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{env.PACKAGENAME}}
-        path: ${{env.PACKAGENAME}}.zip
+        name: macos
+        path: macos.zip
 
   windows:
     needs: [setup]
@@ -277,16 +277,17 @@ jobs:
         cmake --build . --config Release -j 2
     - name: package
       run: |
-        mkdir ${{ env.PACKAGENAME }}
-        Copy-Item -Verbose -Path "README.md" -Destination "${{ env.PACKAGENAME }}"
-        Copy-Item -Verbose -Path "LICENSE" -Destination "${{ env.PACKAGENAME }}"
-        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination "${{ env.PACKAGENAME }}"
-        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination "${{ env.PACKAGENAME }}"
-        Copy-Item -Verbose -Recurse -Path "models\*" -Destination "${{ env.PACKAGENAME }}\models"
-        7z a -r ${{ env.PACKAGENAME }}.zip ${{ env.PACKAGENAME }}
+        package_name=${{env.PACKAGENAME}}/${{needs.setup.outputs.APPNAME}}
+        mkdir ${package_name}
+        Copy-Item -Verbose -Path "README.md" -Destination ${package_name}
+        Copy-Item -Verbose -Path "LICENSE" -Destination ${package_name}
+        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination ${package_name}
+        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination ${package_name}
+        Copy-Item -Verbose -Recurse -Path "models\*" -Destination ${package_name}
+        7z a -r ${{env.PACKAGENAME}}.zip ${{ env.PACKAGENAME }}
 
     - name: upload
       uses: actions/upload-artifact@v4
       with:
-        name: ${{env.PACKAGENAME}}
-        path: ${{env.PACKAGENAME}}.zip
+        name: winodws
+        path: winodws.zip
