@@ -45,13 +45,13 @@ jobs:
         export VULKAN_SDK=`pwd`/1.4.335.0/x86_64 && cd build && cmake ../src && cmake --build . -j 2
     - name: package
       run: |
-        package_name=${{env.PACKAGENAME}}/${{needs.setup.outputs.APPNAME}}
+        package_name=${{needs.setup.outputs.APPNAME}}
         mkdir -p ${package_name}
         cp README.md LICENSE ${package_name}
         cp build/${{ needs.setup.outputs.APPNAME }} ${package_name}
         strip -g ${package_name}/${{ needs.setup.outputs.APPNAME }}
         cp -r models/* ${package_name}
-        zip -9 -r ${{env.PACKAGENAME}}.zip ${{env.PACKAGENAME}}
+        zip -9 -r ubuntu.zip ${package_name}
     - name: log
       run: |
           ls
@@ -82,13 +82,13 @@ jobs:
         cd build && cmake ../src && cmake --build . -j 2
     - name: package
       run: |
-        package_name=${{env.PACKAGENAME}}/${{needs.setup.outputs.APPNAME}}
+        package_name=${{needs.setup.outputs.APPNAME}}
         mkdir -p ${package_name}
         cp README.md LICENSE ${package_name}
         cp build/${{ needs.setup.outputs.APPNAME }} ${package_name}
         strip -g ${package_name}/${{ needs.setup.outputs.APPNAME }}
         cp -r models/* ${package_name}
-        zip -9 -r ${{env.PACKAGENAME}}.zip ${{env.PACKAGENAME}}
+        zip -9 -r ubuntu-arm.zip ${package_name}
     - name: log
       run: |
           ls
@@ -233,13 +233,13 @@ jobs:
         cmake --build . -j 3
     - name: package
       run: |
-        package_name=${{env.PACKAGENAME}}/${{needs.setup.outputs.APPNAME}}
+        package_name=${{needs.setup.outputs.APPNAME}}
         mkdir -p ${package_name}
         cp README.md LICENSE ${package_name}/
         lipo -create build-x86_64/${{ needs.setup.outputs.APPNAME }} build-arm64/${{ needs.setup.outputs.APPNAME }} -o ${package_name}/${{ needs.setup.outputs.APPNAME }}        
         strip ${package_name}/${{ needs.setup.outputs.APPNAME }}
         cp -r models/* ${package_name}
-        zip -9 -r ${{env.PACKAGENAME}}.zip ${{env.PACKAGENAME}}
+        zip -9 -r macos.zip ${package_name}
     - name: upload
       uses: actions/upload-artifact@v4
       with:
@@ -277,14 +277,14 @@ jobs:
         cmake --build . --config Release -j 2
     - name: package
       run: |
-        package_name=${{env.PACKAGENAME}}/${{needs.setup.outputs.APPNAME}}
+        package_name=${{needs.setup.outputs.APPNAME}}
         mkdir ${package_name}
         Copy-Item -Verbose -Path "README.md" -Destination ${package_name}
         Copy-Item -Verbose -Path "LICENSE" -Destination ${package_name}
         Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination ${package_name}
         Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination ${package_name}
         Copy-Item -Verbose -Recurse -Path "models\*" -Destination ${package_name}
-        7z a -r ${{env.PACKAGENAME}}.zip ${{ env.PACKAGENAME }}
+        7z a -r winodws.zip ${package_name}
 
     - name: upload
       uses: actions/upload-artifact@v4
