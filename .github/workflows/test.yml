@@ -1,6 +1,6 @@
 name: Test
 
-on: [push]
+on: []
 
 env: 
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
@@ -277,14 +277,14 @@ jobs:
         cmake --build . --config Release -j 2
     - name: package
       run: |
-        package_name=${{needs.setup.outputs.APPNAME}}
-        mkdir ${package_name}
-        Copy-Item -Verbose -Path "README.md" -Destination ${package_name}
-        Copy-Item -Verbose -Path "LICENSE" -Destination ${package_name}
-        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination ${package_name}
-        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination ${package_name}
-        Copy-Item -Verbose -Recurse -Path "models\*" -Destination ${package_name}
-        7z a -r winodws.zip ${package_name}
+        $package_name="${{needs.setup.outputs.APPNAME}}"
+        mkdir $package_name
+        Copy-Item -Verbose -Path "README.md" -Destination $package_name
+        Copy-Item -Verbose -Path "LICENSE" -Destination $package_name
+        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination $package_name
+        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination $package_name
+        Copy-Item -Verbose -Recurse -Path "models\*" -Destination $package_name
+        7z a -r winodws.zip $package_name
 
     - name: upload
       uses: actions/upload-artifact@v4

@@ -1,9 +1,6 @@
 name: release
 
-permissions:
-  contents: write
-
-on: [pull_request]
+on: [push, pull_request]
 
 env: 
   DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
@@ -28,7 +25,7 @@ jobs:
     needs: [setup]
     runs-on: ubuntu-22.04
     env:
-      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-ubuntu
+      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-ubuntu
     steps:
     - uses: actions/checkout@v4
       with:
@@ -48,12 +45,13 @@ jobs:
         export VULKAN_SDK=`pwd`/1.4.335.0/x86_64 && cd build && cmake ../src && cmake --build . -j 2
     - name: package
       run: |
-        mkdir -p ubuntu
-        cp README.md LICENSE ubuntu
-        cp build/${{ needs.setup.outputs.APPNAME }} ubuntu
-        strip -g ubuntu/${{ needs.setup.outputs.APPNAME }}
-        cp -r models/* ubuntu
-        zip -9 -r ubuntu.zip ubuntu
+        package_name=${{needs.setup.outputs.APPNAME}}
+        mkdir -p ${package_name}
+        cp README.md LICENSE ${package_name}
+        cp build/${{ needs.setup.outputs.APPNAME }} ${package_name}
+        strip -g ${package_name}/${{ needs.setup.outputs.APPNAME }}
+        cp -r models/* ${package_name}
+        zip -9 -r ubuntu.zip ${package_name}
     - name: log
       run: |
           ls
@@ -69,7 +67,7 @@ jobs:
     needs: [setup]
     runs-on: ubuntu-22.04-arm
     env:
-      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-ubuntu-arm
+      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-ubuntu-arm
     steps:
     - uses: actions/checkout@v4
       with:
@@ -84,12 +82,13 @@ jobs:
         cd build && cmake ../src && cmake --build . -j 2
     - name: package
       run: |
-        mkdir -p ubuntu-arm
-        cp README.md LICENSE ubuntu-arm
-        cp build/${{ needs.setup.outputs.APPNAME }} ubuntu-arm
-        strip -g ubuntu-arm/${{ needs.setup.outputs.APPNAME }}
-        cp -r models/* ubuntu-arm
-        zip -9 -r ubuntu-arm.zip ubuntu-arm
+        package_name=${{needs.setup.outputs.APPNAME}}
+        mkdir -p ${package_name}
+        cp README.md LICENSE ${package_name}
+        cp build/${{ needs.setup.outputs.APPNAME }} ${package_name}
+        strip -g ${package_name}/${{ needs.setup.outputs.APPNAME }}
+        cp -r models/* ${package_name}
+        zip -9 -r ubuntu-arm.zip ${package_name}
     - name: log
       run: |
           ls
@@ -161,7 +160,7 @@ jobs:
     needs: [setup, openmp-macos]
     runs-on: macos-latest
     env:
-      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-macos
+      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-macos
     steps:
     - uses: actions/checkout@v4
       with:
@@ -232,25 +231,15 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-framework Metal -framework Foundation -framework IOSurface -framework QuartzCore" \
             ../src
         cmake --build . -j 3
-  #  - name: build-arm64
-  #    run: |
-  #      export VULKAN_SDK=`pwd`/vulkansdk-macos-1.2.189.0/macOS
-  #      mkdir build-arm64 && cd build-arm64
-  #      cmake -DUSE_STATIC_MOLTENVK=ON -DCMAKE_OSX_ARCHITECTURES="arm64" \
-  #          -DCMAKE_CROSSCOMPILING=ON -DCMAKE_SYSTEM_PROCESSOR=arm64 \
-  #          -DOpenMP_C_FLAGS="-Xclang -fopenmp" -DOpenMP_CXX_FLAGS="-Xclang -fopenmp" \
-  #          -DOpenMP_C_LIB_NAMES="libomp" -DOpenMP_CXX_LIB_NAMES="libomp" \
-  #          -DOpenMP_libomp_LIBRARY="$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/libomp.a" \
-  #          ../src
-  #      cmake --build . -j 3
     - name: package
       run: |
-        mkdir -p macos
-        cp README.md LICENSE macos/
-        lipo -create build-x86_64/${{ needs.setup.outputs.APPNAME }} build-arm64/${{ needs.setup.outputs.APPNAME }} -o macos/${{ needs.setup.outputs.APPNAME }}        
-        strip macos/${{ needs.setup.outputs.APPNAME }}
-        cp -r models/* macos
-        zip -9 -r macos.zip macos
+        package_name=${{needs.setup.outputs.APPNAME}}
+        mkdir -p ${package_name}
+        cp README.md LICENSE ${package_name}/
+        lipo -create build-x86_64/${{ needs.setup.outputs.APPNAME }} build-arm64/${{ needs.setup.outputs.APPNAME }} -o ${package_name}/${{ needs.setup.outputs.APPNAME }}        
+        strip ${package_name}/${{ needs.setup.outputs.APPNAME }}
+        cp -r models/* ${package_name}
+        zip -9 -r macos.zip ${package_name}
     - name: upload
       uses: actions/upload-artifact@v4
       with:
@@ -261,8 +250,7 @@ jobs:
     needs: [setup]
     runs-on: windows-latest
     env:
-      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-windows
-      PACKAGENAME_WIN: ${{ needs.setup.outputs.APPNAME }}
+      PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-windows
     steps:
     - uses: actions/checkout@v4
       with:
@@ -289,25 +277,26 @@ jobs:
         cmake --build . --config Release -j 2
     - name: package
       run: |
-        mkdir ${{ env.PACKAGENAME_WIN }}
-        Copy-Item -Verbose -Path "README.md" -Destination "${{ env.PACKAGENAME_WIN }}"
-        Copy-Item -Verbose -Path "LICENSE" -Destination "${{ env.PACKAGENAME_WIN }}"
-        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination "${{ env.PACKAGENAME_WIN }}"
-        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination "${{ env.PACKAGENAME_WIN }}"
-        Copy-Item -Verbose -Recurse -Path "models\*" -Destination "${{ env.PACKAGENAME_WIN }}\models"
-        7z a -r ${{ env.PACKAGENAME_WIN }}.zip ${{ env.PACKAGENAME_WIN }}
+        $package_name="${{needs.setup.outputs.APPNAME}}"
+        mkdir $package_name
+        Copy-Item -Verbose -Path "README.md" -Destination $package_name
+        Copy-Item -Verbose -Path "LICENSE" -Destination $package_name
+        Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination $package_name
+        Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination $package_name
+        Copy-Item -Verbose -Recurse -Path "models\*" -Destination $package_name
+        7z a -r windwos.zip $package_name
 
     - name: upload
       uses: actions/upload-artifact@v4
       with:
-        name: windows
-        path: D:\a\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex-refs\heads\ex-windows.zip
+        name: windwos
+        path: windwos.zip
 
   # windows-arm:
   #   needs: [setup]
   #   runs-on: windows-latest
   #   env:
-  #     PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-windows
+  #     PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-windows
   #   steps:
   #   - uses: actions/checkout@v4
   #     with:
@@ -334,21 +323,24 @@ jobs:
   #       cmake --build . --config Release -j 2
   #   - name: package
   #     run: |
-  #       mkdir ${{ env.PACKAGENAME }}
-  #       Copy-Item -Verbose -Path "README.md" -Destination "${{ env.PACKAGENAME }}"
-  #       Copy-Item -Verbose -Path "LICENSE" -Destination "${{ env.PACKAGENAME }}"
-  #       Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination "${{ env.PACKAGENAME }}"
-  #       Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination "${{ env.PACKAGENAME }}"
-  #       Copy-Item -Verbose -Recurse -Path "models\*" -Destination "${{ env.PACKAGENAME }}"
-  #       7z a -r ${{ env.PACKAGENAME }}.zip ${{ env.PACKAGENAME }}
+  #       $package_name="${{needs.setup.outputs.APPNAME}}"
+  #       mkdir $package_name
+  #       Copy-Item -Verbose -Path "README.md" -Destination $package_name
+  #       Copy-Item -Verbose -Path "LICENSE" -Destination $package_name
+  #       Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination $package_name
+  #       Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination $package_name
+  #       Copy-Item -Verbose -Recurse -Path "models\*" -Destination $package_name
+  #       7z a -r windwos-arm.zip $package_name
 
   #   - name: upload
   #     uses: actions/upload-artifact@v4
   #     with:
-  #       name: windows-arm
-  #       path: D:\a\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex\rife-ncnn-vulkan-ex-refs\heads\ex-windows.zip
+  #       name: windwos-arm
+  #       path: windwos-arm.zip
   
   release:
+    permissions:
+      contents: write
     needs: [setup, ubuntu, windows, macos]
     runs-on: ubuntu-latest
     steps:
@@ -359,7 +351,7 @@ jobs:
     - name: Generate version and tag
       id: version_tag
       run: |
-          version=$(python -c "from datetime import datetime; print(str(datetime.now()).split(' ')[0].replace('-',''))")
+          version=$(python -c "from datetime import datetime, timezone, timedelta; print(str(datetime.now(timezone(timedelta(hours=8)))).split(' ')[0].replace('-',''))")
           tag=$(python -c "import random, string; print(''.join(random.choices(string.ascii_letters, k=8)))")
           ver=$version-$tag
           echo "Version=$ver"
@@ -381,7 +373,7 @@ jobs:
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+        PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-ubuntu
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: artifacts/ubuntu/ubuntu.zip
@@ -392,7 +384,7 @@ jobs:
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-macos
+        PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-macos
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: artifacts/macos/macos.zip
@@ -410,9 +402,9 @@ jobs:
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-${{ needs.setup.outputs.VERSION }}-windows
+        PACKAGENAME: ${{ needs.setup.outputs.APPNAME }}-windows
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: artifacts/windows/ex-windows.zip
+        asset_path: artifacts/windows/windows.zip
         asset_name: windows.zip
         asset_content_type: application/zip
