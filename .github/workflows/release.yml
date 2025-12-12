@@ -284,13 +284,13 @@ jobs:
         Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination $package_name
         Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination $package_name
         Copy-Item -Verbose -Recurse -Path "models\*" -Destination $package_name
-        7z a -r windwos.zip $package_name
+        7z a -r windows.zip $package_name
 
     - name: upload
       uses: actions/upload-artifact@v4
       with:
-        name: windwos
-        path: windwos.zip
+        name: windows
+        path: windows.zip
 
   # windows-arm:
   #   needs: [setup]
@@ -330,13 +330,13 @@ jobs:
   #       Copy-Item -Verbose -Path "build\Release\${{ needs.setup.outputs.APPNAME }}.exe" -Destination $package_name
   #       Copy-Item -Verbose -Path "C:\windows\system32\vcomp140.dll" -Destination $package_name
   #       Copy-Item -Verbose -Recurse -Path "models\*" -Destination $package_name
-  #       7z a -r windwos-arm.zip $package_name
+  #       7z a -r windows-arm.zip $package_name
 
   #   - name: upload
   #     uses: actions/upload-artifact@v4
   #     with:
-  #       name: windwos-arm
-  #       path: windwos-arm.zip
+  #       name: windows-arm
+  #       path: windows-arm.zip
   
   release:
     permissions:
