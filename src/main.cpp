@@ -304,6 +304,210 @@ void call_stop_callbacks()
     }
 }
 
+#define STATE_EMPTY -1
+#define STATE_IDLE 0
+#define STATE_RUNNING 1
+#define STATE_PAUSED 2
+#define STATE_STOPPED 3
+#define STATE_INTERRUPTED 4
+
+class ProcessController
+{
+public:
+    int state()
+    {
+        lock.lock();
+        int ret = _state;
+        lock.unlock();
+        return ret;
+    }
+
+    int pausing()
+    {
+        lock.lock();
+        int ret = _pausing;
+        lock.unlock();
+        return ret;
+    }
+
+    int resuming()
+    {
+        lock.lock();
+        int ret = _resuming;
+        lock.unlock();
+        return ret;
+    }
+
+    void set_state(int state_id)
+    {
+        switch (state_id)
+        {
+        case STATE_RUNNING:
+            _state = STATE_RUNNING;
+            break;
+        case STATE_INTERRUPTED:
+            set_interrupted();
+            break;
+        case STATE_STOPPED:
+            set_stopped();
+            break;
+        }
+    }
+
+    void set_state(int state_id, bool value)
+    {
+        switch (state_id)
+        {
+        case STATE_PAUSED:
+            set_paused(value);
+            break;
+        case STATE_RUNNING:
+            break;
+        case STATE_IDLE:
+            break;
+        }
+    }
+
+    int wait_resume() // wait until resuming and return the new state
+    {
+        debug_output("ProcessController: wait_resume waiting\n");
+        lock.lock();
+        paused_count++;
+        _check_pause_state();
+        condition.wait(lock);
+        resumed_count++;
+        _check_pause_state();
+        int ret = _state;
+        lock.unlock();
+        debug_output("ProcessController: wait_resume resumed\n");
+        return ret;
+    }
+
+    void request_increase()
+    {
+        lock.lock();
+        request_size++;
+        _check_pause_state();
+        lock.unlock();
+    }
+
+    void request_decrease()
+    {
+        lock.lock();
+        request_size--;
+        _check_pause_state();
+        lock.unlock();
+    }
+
+private:
+    void set_stopped()
+    {
+        lock.lock();
+        if (_state == STATE_PAUSED || _pausing)
+        {
+            _set_paused(false);
+        }
+        else if (!(_state == STATE_RUNNING || _state == STATE_IDLE))
+        {
+            lock.unlock();
+            return;
+        }
+        _set_stopped();
+        lock.unlock();
+    }
+
+    void _set_stopped()
+    {
+        debug_output("ProcessController: _set_stopped\n");
+        _state = STATE_STOPPED;
+        call_stop_callbacks();
+    }
+
+    void set_interrupted()
+    {
+        lock.lock();
+        if (_state == STATE_PAUSED || _pausing)
+        {
+            _set_paused(false);
+        }
+        else if (!(_state == STATE_RUNNING || _state == STATE_IDLE))
+        {
+            lock.unlock();
+            return;
+        }
+        _set_interrupted();
+        lock.unlock();
+    }
+
+    void _set_interrupted()
+    {
+        debug_output("ProcessController: _set_interrupted\n");
+        _state = STATE_INTERRUPTED;
+        call_stop_callbacks();
+    }
+
+    void set_paused(bool paused)
+    {
+        lock.lock();
+        if (!(_state == STATE_RUNNING || _state == STATE_PAUSED) || _pausing || _resuming)
+        {
+            lock.unlock();
+            return;
+        }
+        _set_paused(paused);
+        lock.unlock();
+    }
+
+    void _set_paused(bool paused)
+    {
+        debug_output("ProcessController: _set_paused %d\n", paused);
+        if (paused)
+        {
+            paused_count = 0;
+            _pausing = true;
+            _state = STATE_PAUSED;
+        }
+        else
+        {
+            resumed_count = 0;
+            _resuming = true;
+            _state = STATE_RUNNING;
+            condition.broadcast(); // wake up all threads
+        }
+    }
+
+    void _check_pause_state()
+    {
+        if (_pausing)
+        {
+            if (paused_count == request_size || request_size == 0)
+            {
+                _pausing = false;
+                paused_count = 0;
+            }
+        }
+        else if (_resuming)
+        {
+            if (resumed_count == request_size || request_size == 0)
+            {
+                _resuming = false;
+                resumed_count = 0;
+            }
+        }
+    }
+
+    int _state = STATE_IDLE;
+    bool _pausing = false;
+    bool _resuming = false;
+    int request_size = 0;  // must <= 3, load/proc/save
+    int paused_count = 0;  // count of pauses
+    int resumed_count = 0; // count of resumes
+    ncnn::Mutex lock;
+    ncnn::ConditionVariable condition; // for pause/resume
+};
+
+ProcessController process_controller;
+
 void stop_with_error(const char* message,...)
 {
     va_list args;
@@ -966,12 +1170,100 @@ cleanup:
     for (int i = 0; i < pending_images.size(); i++)
     {
         image_release(pending_images[i]);
-        // if (!pending_images[i].empty())
-        // {
-        // }
     }
     return 0;
 }
+
+
+#ifdef _WIN32
+class InputThreadParams
+{
+public:
+    HANDLE hStdIn;
+};
+#endif
+
+void* input_loop(void* args)
+{
+    debug_output("input loop started\n");
+
+    #ifdef _WIN32
+    const InputThreadParams* itp = (const InputThreadParams*)args;
+    console_init(itp->hStdIn);
+    #else
+    console_init();
+    #endif
+
+    int q_pressed = 0;
+    int p_pressed = 0;
+    double q_pressed_last = 0;
+    double p_pressed_last = 0;
+    for (;;)
+    {
+        {
+            int state = process_controller.state();;
+            if (state == STATE_STOPPED)     goto input_loop_stopped;
+            if (state == STATE_INTERRUPTED) goto input_loop_interrupted;
+        }
+        #ifdef _WIN32
+        int key = key_press(itp->hStdIn);
+        #else
+        int key = key_press();
+        #endif
+        debug_output("key pressed: %d\n", key);
+        if (key == KEY_Q) // quit
+        {
+            if (q_pressed && get_timestamp() - q_pressed_last < 0.5)
+            {
+                process_controller.set_state(STATE_STOPPED);
+                debug_output("stop signal received, stop all tasks...\n");
+                q_pressed = 0;
+                g_stopped.store(true, std::memory_order_release); // next feat
+            }
+            else
+            {
+                q_pressed = 1;
+            }
+            q_pressed_last = get_timestamp();
+        }
+        else if (key == KEY_P) // pause/resume
+        {
+            if (process_controller.pausing() || process_controller.resuming())
+            {
+                // do nothing
+                continue;
+            }
+            if (p_pressed && get_timestamp() - p_pressed_last < 0.5)
+            {
+                int state = process_controller.state();
+                if (state == STATE_PAUSED)
+                {
+                    process_controller.set_state(STATE_PAUSED, false);
+                }
+                else
+                {
+                    process_controller.set_state(STATE_PAUSED, true);
+                }
+                p_pressed = 0;
+            }
+            else
+            {
+                p_pressed = 1;
+            }
+            p_pressed_last = get_timestamp();
+        }
+    }
+
+    debug_output("input loop finished\n");
+    return 0;
+input_loop_interrupted:
+    debug_output("input loop interrupted\n");
+    return 0;
+input_loop_stopped:
+    debug_output("input loop stopped\n");
+    return 0;
+}
+
 
 int get_num(const path_t& path)
 {
@@ -1546,7 +1838,24 @@ int main(int argc, char** argv)
         toload.resize(jobs_load);
     }
 
+    // 当使用 '|' 输出到 stdout 时，CTRL+C 会直接中断程序组，导致无法安全退出
+    // 使用 [q] 安全退出，这样ffmpeg才会完成视频的封装，而不是被强制中断
+    print("\n");
+    print("Press [q] twice to safe quit (ffmpeg may not finish the video when [ctrl+c])\n");
+    // print("      [p] twice to pause/resume\n\n"); // impl now
+
     {
+        process_controller.set_state(STATE_RUNNING);
+
+        #ifdef _WIN32
+        HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
+        InputThreadParams itp;
+        itp.hStdIn = hStdIn;
+        ncnn::Thread input_loop_thread = ncnn::Thread(input_loop, (void*)&itp);
+        #else
+        ncnn::Thread input_loop_thread = ncnn::Thread(input_loop, 0);
+        #endif
+
         std::vector<RIFE*> rife(use_gpu_count);
 
         for (int i=0; i<use_gpu_count; i++)
@@ -1728,6 +2037,16 @@ int main(int argc, char** argv)
             delete rife[i];
         }
         rife.clear();
+
+        process_controller.set_state(STATE_STOPPED);
+
+        #ifdef _WIN32
+        CancelIoEx(hStdIn, NULL); // cancel input thread blocking read
+        input_loop_thread.join();
+        #else
+        close(fileno(stdin)); // close stdin to unblock input thread !! force
+        input_loop_thread.join();
+        #endif
     }
 
     ncnn::destroy_gpu_instance();
