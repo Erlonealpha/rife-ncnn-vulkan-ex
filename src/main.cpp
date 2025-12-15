@@ -39,48 +39,27 @@ std::atomic<bool> g_interrupted(false);   // ev 1
 std::atomic<bool> g_stopped(false);       // ev 2
 std::vector<std::function<void()>> g_stop_callbacks;
 
+void print_impl(const char* message, va_list args)
+{
+    vfprintf(stderr, message, args);
+}
+void wprint_impl(const wchar_t* message, va_list args)
+{
+    vfwprintf(stderr, message, args);
+}
+
 void print(const char* message, ...)
 {
     va_list args;
     va_start(args, message);
-    if (va_arg(args, void*) == nullptr) {
-        fprintf(stderr, "%s\n", message);
-    } else {
-        va_start(args, message);
-        va_list args_copy;
-        va_copy(args_copy, args);
-        size_t len = vsnprintf(nullptr, 0, message, args_copy) + 1;  // +1 for the null terminator
-        va_end(args_copy);
-        if (len > 0) {
-            char* buffer = new char[len];
-            vsnprintf(buffer, len, message, args);
-            fprintf(stderr, "%s\n", buffer);
-            delete[] buffer;
-        }
-    }
-    va_end(args);
+    print_impl(message, args);
 }
 
 void wprint(const wchar_t* message, ...)
 {
     va_list args;
     va_start(args, message);
-    if (va_arg(args, void*) == nullptr) {
-        fwprintf(stderr, L"%s\n", message);
-    } else {
-        va_start(args, message);
-        va_list args_copy;
-        va_copy(args_copy, args);
-        size_t len = vswprintf(nullptr, 0, message, args_copy) + 1;  // +1 for the null terminator
-        va_end(args_copy);
-        if (len > 0) {
-            wchar_t* buffer = new wchar_t[len];
-            vswprintf(buffer, len, message, args);
-            fwprintf(stderr, L"%s\n", buffer);
-            delete[] buffer;
-        }
-    }
-    va_end(args);
+    wprint_impl(message, args);
 }
 
 void debug_output(const char* message, ...)
@@ -89,22 +68,17 @@ void debug_output(const char* message, ...)
     {
         va_list args;
         va_start(args, message);
-        if (va_arg(args, void*) == nullptr) {
-            print("%s\n", message);
-        } else {
-            va_start(args, message);
-            va_list args_copy;
-            va_copy(args_copy, args);
-            size_t len = vsnprintf(nullptr, 0, message, args_copy) + 1;  // +1 for the null terminator
-            va_end(args_copy);
-            if (len > 0) {
-                char* buffer = new char[len];
-                vsnprintf(buffer, len, message, args);
-                print("%s\n", buffer);
-                delete[] buffer;
-            }
-        }
-        va_end(args);
+        print_impl(message, args);
+    }
+}
+
+void debug_outputw(const wchar_t* message, ...)
+{
+    if (gdebug)
+    {
+        va_list args;
+        va_start(args, message);
+        wprint_impl(message, args);
     }
 }
 
@@ -183,31 +157,32 @@ static std::vector<int> parse_optarg_int_array(const char* optarg)
 
 #include "filesystem_utils.h"
 #include "progress.h"
+#include "input.h"
 
 static void print_usage()
 {
-    print("Usage: rife-ncnn-vulkan-ex -0 infile -1 infile1 -o outfile [options]...");
-    print("       rife-ncnn-vulkan-ex -i indir -o outdir [options]...\n");
-    print("  -h                   show this help");
-    print("  -v                   verbose output");
-    print("  -0 input0-path       input image0 path (jpg/png/webp)");
-    print("  -1 input1-path       input image1 path (jpg/png/webp)");
-    print("  -i input-path        input image directory (jpg/png/webp)");
-    print("  -o output-path       output image path (jpg/png/webp) or directory");
-    print("  -n num-frame         target frame count (default=N*2)");
-    print("  -s time-step         time step (0~1, default=0.5)");
-    print("  -m model-path        rife model path (default=rife-v2.3)");
-    print("  -g gpu-id            gpu device to use (-1=cpu, default=auto) can be 0,1,2 for multi-gpu");
-    print("  -j load:proc:save    thread count for load/proc/save (default=1:2:2)");
-    print("                       (when '-r' specified, save is forced to 1) can be 1:2,2,2:2 for multi-gpu");
-    print("  -r                   raw output to stdout (no jpg/png/webp output)");
-    print("  -x                   enable spatial tta mode");
-    print("  -z                   enable temporal tta mode");
-    print("  -u                   enable UHD mode");
-    print("  -f pattern-format    output image filename pattern format (%%08d.jpg/png/webp, default=ext/%%08d.png)");
-    print("  -p progress          show progress (0=off, 1=on, default=1)");
-    print("  -t progress-interval progress update interval in seconds (default=0.5)");
-    print("  -d                   enable debug output\n");
+    print("Usage: rife-ncnn-vulkan-ex -0 infile -1 infile1 -o outfile [options]...\n");
+    print("       rife-ncnn-vulkan-ex -i indir -o outdir [options]...\n\n");
+    print("  -h                   show this help\n");
+    print("  -v                   verbose output\n");
+    print("  -0 input0-path       input image0 path (jpg/png/webp)\n");
+    print("  -1 input1-path       input image1 path (jpg/png/webp)\n");
+    print("  -i input-path        input image directory (jpg/png/webp)\n");
+    print("  -o output-path       output image path (jpg/png/webp) or directory\n");
+    print("  -n num-frame         target frame count (default=N*2)\n");
+    print("  -s time-step         time step (0~1, default=0.5)\n");
+    print("  -m model-path        rife model path (default=rife-v2.3)\n");
+    print("  -g gpu-id            gpu device to use (-1=cpu, default=auto) can be 0,1,2 for multi-gpu\n");
+    print("  -j load:proc:save    thread count for load/proc/save (default=1:2:2)\n");
+    print("                       (when '-r' specified, save is forced to 1) can be 1:2,2,2:2 for multi-gpu\n");
+    print("  -r                   raw output to stdout (no jpg/png/webp output)\n");
+    print("  -x                   enable spatial tta mode\n");
+    print("  -z                   enable temporal tta mode\n");
+    print("  -u                   enable UHD mode\n");
+    print("  -f pattern-format    output image filename pattern format (%%08d.jpg/png/webp, default=ext/%%08d.png)\n");
+    print("  -p progress          show progress (0=off, 1=on, default=1)\n");
+    print("  -t progress-interval progress update interval in seconds (default=0.5)\n");
+    print("  -d                   enable debug output\n\n");
 }
 
 static int decode_image(const path_t& imagepath, ncnn::Mat& image, int* webp)
@@ -333,32 +308,46 @@ void stop_with_error(const char* message,...)
 {
     va_list args;
     va_start(args, message);
-    if (va_arg(args, void*) == nullptr) {
-        print("%s\n", message);
-    } else {
-        va_start(args, message);
-        va_list args_copy;
-        va_copy(args_copy, args);
-        size_t len = vsnprintf(nullptr, 0, message, args_copy) + 1;  // +1 for the null terminator
-        va_end(args_copy);
-        if (len > 0) {
-            char* buffer = new char[len];
-            vsnprintf(buffer, len, message, args);
-            print("%s\n", buffer);
-            delete[] buffer;
-        }
-    }
-    va_end(args);
+    print_impl(message, args);
+
+    g_stopped.store(true, std::memory_order_release);
+    call_stop_callbacks();
+}
+void stop_with_errorw(const wchar_t* message,...)
+{
+    va_list args;
+    va_start(args, message);
+    wprint_impl(message, args);
 
     g_stopped.store(true, std::memory_order_release);
     call_stop_callbacks();
 }
 
+void image_release(ncnn::Mat& image, int webp = 0)
+{
+    unsigned char* pixeldata = (unsigned char*)image.data;
+    if (webp == 1)
+    {
+        free(pixeldata);
+    }
+    else
+    {
+        #ifdef _WIN32
+        free(pixeldata);
+        #else
+        stbi_image_free(pixeldata);
+        #endif
+    }
+    image.release();
+}
+
 struct CacheEntry {
+    int id;
     ncnn::Mat image;
     int request;
     std::atomic<int> complete;
-    int released;
+    int acquired = 0;
+    int released = 0;
     int webp;
     int ret = -1;
 };
@@ -371,10 +360,11 @@ public:
         cleanup();
     }
 
-    void register_request_nolock(const path_t& path, int count, int webp)
+    void register_request_nolock(int id, const path_t& path, int count, int webp)
     {
         if (cache.find(path) == cache.end())
         {
+            cache[path].id = id;
             cache[path].request = count;
             cache[path].complete = 0;
             cache[path].webp = webp;
@@ -385,34 +375,46 @@ public:
         }
     }
 
-    void register_request(const path_t& path, int count, int webp)
+    void register_request(int id, const path_t& path, int count, int webp)
     {
         pool_lock.lock();
+        cache[path].id = id;
         cache[path].request = count;
         cache[path].complete = 0;
         cache[path].webp = webp;
         pool_lock.unlock();
     }
 
-    int acquire(const path_t& path, ncnn::Mat& image)
+    int acquire(const path_t& path, ncnn::Mat& image, int* webp)
     {
         pool_lock.lock();
         auto& entry = cache[path];
 
         if (entry.released)
         {
+            #ifdef _WIN32
+            stop_with_errorw(L"Image pool: image %s acquired but it has been released", path.c_str());
+            #else
             stop_with_error("Image pool: image %s acquired but it has been released", path.c_str());
+            #endif
             pool_lock.unlock();
             return entry.ret;
         }
 
-        if (entry.image.empty())
+        if (!entry.acquired)
         {
+            // #ifdef _WIN32
+            // debug_outputw(L"Image pool: decode image %s\n", path.c_str());
+            // #else
+            // debug_output("Image pool: decode image %s\n", path.c_str());
+            // #endif
             int ret = decode_image(path, entry.image, &entry.webp);
             entry.ret = ret;
+            entry.acquired = 1;
         }
         
         image = entry.image;
+        *webp = entry.webp;
         pool_lock.unlock();
         return entry.ret;
     }
@@ -432,11 +434,13 @@ public:
 
         if (entry.complete.load(std::memory_order_relaxed) == entry.request)
         {
+            // #ifdef _WIN32
+            // debug_outputw(L"Image pool: releasing image %s\n", path.c_str());
+            // #else
+            // debug_output("Image pool: releasing image %s\n", path.c_str());
+            // #endif
             entry.released = 1;
-            if (!entry.image.empty()) // release if not empty
-            {                         // empty if errors or use exists output
-                entry.image.release();
-            }
+            image_release(entry.image, entry.webp);
         }
 
         pool_lock.unlock();
@@ -449,7 +453,7 @@ public:
         {
             if (!item.second.image.empty())
             {
-                item.second.image.release();
+                image_release(item.second.image, item.second.webp);
             }
         }
     }
@@ -463,6 +467,42 @@ ImageCachePool imagepool;
 class Task
 {
 public:
+    Task() {}
+    Task(const Task& other) : 
+        id(other.id),
+        webp0(other.webp0),
+        webp1(other.webp1),
+        in0path(other.in0path),
+        in1path(other.in1path),
+        outpath(other.outpath),
+        timestep(other.timestep),
+        in0image(other.in0image),
+        in1image(other.in1image),
+        outimage(other.outimage){}
+    Task operator=(const Task& other)
+    {
+        if (this == &other)
+            return *this;
+        id = other.id;
+        webp0 = other.webp0;
+        webp1 = other.webp1;
+        in0path = other.in0path;
+        in1path = other.in1path;
+        outpath = other.outpath;
+        timestep = other.timestep;
+        in0image = other.in0image;
+        in1image = other.in1image;
+        outimage = other.outimage;
+        return *this;
+    }
+
+    ~Task()
+    {
+        in0image.release();
+        in1image.release();
+        outimage.release();
+    }
+
     int id;
     int webp0;
     int webp1;
@@ -484,13 +524,13 @@ public:
     TaskQueue(int size = 8)
     {
         if (size < 0) size = 8;
-        max_size = size;
+        _max_size = size;
     }
 
     void resize(int size)
     {
         lock.lock();
-        max_size = size;
+        _max_size = size;
         lock.unlock();
     }
 
@@ -502,11 +542,19 @@ public:
         return ret;
     }
 
+    int max_size()
+    {
+        lock.lock();
+        int ret = _max_size;
+        lock.unlock();
+        return ret;
+    }
+
     void put(const T& v)
     {
         lock.lock();
 
-        while (tasks.size() >= max_size && max_size != 0)
+        while (tasks.size() >= _max_size && _max_size != 0)
         {
             condition.wait(lock);
         }
@@ -565,15 +613,15 @@ public:
 
     bool full()
     {
-        if (max_size == 0) return false;
+        if (_max_size == 0) return false;
         lock.lock();
-        bool ret = tasks.size() >= max_size;
+        bool ret = tasks.size() >= _max_size;
         lock.unlock();
         return ret;
     }
 
 private:
-    int max_size;
+    int _max_size;
     ncnn::Mutex lock;
     ncnn::ConditionVariable condition;
     std::queue<T> tasks;
@@ -610,7 +658,7 @@ public:
 
 void* load(void* args)
 {
-    debug_output("load thread started");
+    debug_output("load thread started\n");
 
     const LoadThreadParams* ltp = (const LoadThreadParams*)args;
 
@@ -626,11 +674,6 @@ void* load(void* args)
 
         int i;
         toload.get(i);
-        {
-            int r = check_event();
-            if (r == 1)      goto load_interrupted;
-            else if (r == 2) goto load_stopped;
-        }
 
         if (ltp->raw_output && ltp->bitmap[i])
         {
@@ -656,18 +699,14 @@ void* load(void* args)
             v.outpath = ltp->output_files[i];
             v.timestep = ltp->timesteps[i];
     
-            int ret0 = imagepool.acquire(v.in0path, v.in0image);
-            int ret1 = imagepool.acquire(v.in1path, v.in1image);
+            // debug_output("load thread: load %d\n", v.id);
+            int ret0 = imagepool.acquire(v.in0path, v.in0image, &v.webp0);
+            int ret1 = imagepool.acquire(v.in1path, v.in1image, &v.webp1);
     
             if (ret0 == 0 && ret1 == 0)
             {
                 v.outimage = ncnn::Mat(v.in0image.w, v.in0image.h, (size_t)3, 3);
                 toproc.put(v);
-                {
-                    int r = check_event();
-                    if (r == 1)      goto load_interrupted;
-                    else if (r == 2) goto load_stopped;
-                }
             }
             else
             {
@@ -679,13 +718,13 @@ void* load(void* args)
         progress.update(1, 0, 0);
     }
 
-    debug_output("load thread finished");
+    debug_output("load thread finished\n");
     return 0;
 load_interrupted:
-    debug_output("load thread interrupted");
+    debug_output("load thread interrupted\n");
     return 0;
 load_stopped:
-    debug_output("load thread stopped");
+    debug_output("load thread stopped\n");
     return 0;
 }
 
@@ -698,7 +737,7 @@ public:
 
 void* proc(void* args)
 {
-    debug_output("proc thread started");
+    debug_output("proc thread started\n");
 
     const ProcThreadParams* ptp = (const ProcThreadParams*)args;
     const RIFE* rife = ptp->rife;
@@ -734,15 +773,16 @@ void* proc(void* args)
             tosave.put(v);
         }
         progress.update(0, 1, 0);
+        // std::this_thread::sleep_for(std::chrono::seconds(1)); // dbg slow down load thread for debug
     }
 
-    debug_output("proc thread finished");
+    debug_output("proc thread finished\n");
     return 0;
 proc_interrupted:
-    debug_output("proc thread interrupted");
+    debug_output("proc thread interrupted\n");
     return 0;
 proc_stopped:
-    debug_output("proc thread stopped");
+    debug_output("proc thread stopped\n");
     return 0;
 }
 
@@ -754,7 +794,7 @@ public:
 
 void* save(void* args)
 {
-    debug_output("save thread started");
+    debug_output("save thread started\n");
 
     const SaveThreadParams* stp = (const SaveThreadParams*)args;
     const int verbose = stp->verbose;
@@ -782,20 +822,19 @@ void* save(void* args)
                 #endif
             }
         }
-        v.outimage.release();
         progress.update(0, 0, 1);
         int r = check_event();
         if (r == 1)      goto save_interrupted;
         else if (r == 2) goto save_stopped;
     }
 
-    debug_output("save thread finished");
+    debug_output("save thread finished\n");
     return 0;
 save_interrupted:
-    debug_output("save thread interrupted");
+    debug_output("save thread interrupted\n");
     return 0;
 save_stopped:
-    debug_output("save thread stopped");
+    debug_output("save thread stopped\n");
     return 0;
 }
 
@@ -849,29 +888,42 @@ static void write_bgr24_to_stdout(int w, int h, int c, void* bgrdata)
 
 void* raw_save(void* args)
 {
-    debug_output("raw save thread started");
+    debug_output("raw save thread started\n");
 
     const RawSaveThreadParams* rstp = (const RawSaveThreadParams*)args;
     const int start_id = rstp->start_id;
     const int total = rstp->total;
     const int verbose = rstp->verbose;
-    int last_id = start_id - 1;
+    int offset = start_id;
+    int last_id = -1;
     std::vector<int> pending_ids;
     std::vector<ncnn::Mat> pending_images;
-    pending_images.resize(total + start_id);
+    pending_images.resize(total-start_id);
     
     for (;;)
     {
         Task v;
 
+        {
+            int r = check_event();
+            if (r == 1)      goto raw_save_interrupted;
+            else if (r == 2) goto raw_save_stopped;
+        }
         torawsave.get(v);
+        {
+            int r = check_event();
+            if (r == 1)      goto raw_save_interrupted;
+            else if (r == 2) goto raw_save_stopped;
+        }
 
         if (v.id == -233)
             break;
 
-        pending_images[v.id] = v.outimage;
-        pending_ids.push_back(v.id);
-        if (v.id == last_id + 1)
+        int now_id = v.id - offset;
+
+        pending_images[now_id] = v.outimage;
+        pending_ids.push_back(now_id);
+        if (now_id == last_id + 1)
         {
             std::sort(pending_ids.begin(), pending_ids.end(), std::greater<int>());
             int i = pending_ids.size() - 1;
@@ -889,36 +941,34 @@ void* raw_save(void* args)
                     pending_images[_id].data
                 );
                 #endif
+                // image_release(pending_images[_id]);
                 pending_images[_id].release();
                 i--;
                 if (verbose)
                 {
                     print("raw saved to stdout: %d\n", _id);
                 }
-                int r = check_event();
-                if (r == 1)      goto raw_save_interrupted;
-                else if (r == 2) goto raw_save_stopped;
             }
         }
-        
+
         imagepool.release(v.in0path);
         imagepool.release(v.in1path);
         progress.update(0, 0, 1);
     }
-    debug_output("raw save thread finished");
+    debug_output("raw save thread finished\n");
+    goto cleanup;
 raw_save_interrupted:
-    debug_output("raw save thread interrupted");
+    debug_output("raw save thread interrupted\n");
     goto cleanup;
 raw_save_stopped:
-    debug_output("raw save thread stopped");
-    goto cleanup;
+    debug_output("raw save thread stopped\n");
 cleanup:
     for (int i = 0; i < pending_images.size(); i++)
     {
-        if (!pending_images[i].empty())
-        {
-            pending_images[i].release();
-        }
+        image_release(pending_images[i]);
+        // if (!pending_images[i].empty())
+        // {
+        // }
     }
     return 0;
 }
@@ -1149,7 +1199,7 @@ int main(int argc, char** argv)
 
     gdebug = debug;
 
-    debug_output("rife-ncnn-vulkan-ex start");
+    debug_output("rife-ncnn-vulkan-ex start\n");
 
     if (((input0path.empty() || input1path.empty()) && inputpath.empty()) || (!raw_output && outputpath.empty()))
     {
@@ -1373,8 +1423,8 @@ int main(int argc, char** argv)
                 input0_files[i] = inputpath + PATHSTR('/') + filename0;
                 input1_files[i] = inputpath + PATHSTR('/') + filename1;
                 output_files[i] = outputpath + PATHSTR('/') + output_filename;
-                imagepool.register_request_nolock(input0_files[i], 1, get_file_extension(filename0) == PATHSTR("webp") ? 1 : 0);
-                imagepool.register_request_nolock(input1_files[i], 1, get_file_extension(filename1) == PATHSTR("webp") ? 1 : 0);
+                imagepool.register_request_nolock(i, input0_files[i], 1, get_file_extension(filename0) == PATHSTR("webp") ? 1 : 0);
+                imagepool.register_request_nolock(i+numframe, input1_files[i], 1, get_file_extension(filename1) == PATHSTR("webp") ? 1 : 0);
                 timesteps[i] = fx;
             }
         }
@@ -1385,8 +1435,8 @@ int main(int argc, char** argv)
             output_files.push_back(outputpath);
             timesteps.push_back(timestep);
             toload.put_nowait(0);
-            imagepool.register_request_nolock(input0path, 1, get_file_extension(input0path) == PATHSTR("webp") ? 1 : 0);
-            imagepool.register_request_nolock(input1path, 1, get_file_extension(input1path) == PATHSTR("webp") ? 1 : 0);
+            imagepool.register_request_nolock(0, input0path, 1, get_file_extension(input0path) == PATHSTR("webp") ? 1 : 0);
+            imagepool.register_request_nolock(1, input1path, 1, get_file_extension(input1path) == PATHSTR("webp") ? 1 : 0);
             first_task_id = 0;
             total++;
         }
@@ -1420,9 +1470,6 @@ int main(int argc, char** argv)
 #if _WIN32
     CoInitializeEx(NULL, COINIT_MULTITHREADED);
 #endif
-
-    if (g_interrupted.load(std::memory_order_relaxed)) 
-        return -1;
 
     #ifdef _WIN32 // windows use _setmode to set binary mode for stdout
     if (raw_output)
@@ -1481,20 +1528,20 @@ int main(int argc, char** argv)
     if (raw_output)
     {
         jobs_save = 1;
-        if (total_jobs_proc > torawsave.size())
+        if (total_jobs_proc > torawsave.max_size())
         {
             torawsave.resize(total_jobs_proc);
         }
     }
-    else if (jobs_save > tosave.size())
+    else if (jobs_save > tosave.max_size())
     {
         tosave.resize(jobs_save);
     }
-    if (total_jobs_proc > toproc.size())
+    if (total_jobs_proc > toproc.max_size())
     {
         toproc.resize(total_jobs_proc);
     }
-    if (jobs_load > toload.size())
+    if (jobs_load > toload.max_size())
     {
         toload.resize(jobs_load);
     }
@@ -1521,7 +1568,6 @@ int main(int argc, char** argv)
             ltp.timesteps = timesteps;
             ltp.bitmap = bitmap;
 
-            debug_output("create load thread");
             std::vector<ncnn::Thread*> load_threads(jobs_load);
             {
                 for (int i=0; i<jobs_load; i++)
@@ -1647,14 +1693,9 @@ int main(int argc, char** argv)
             }
             debug_output("load thread joined\n");
 
-            int ev_id = check_event();
-
-            if (ev_id == 0)
+            for (int i=0; i<total_jobs_proc; i++)
             {
-                for (int i=0; i<total_jobs_proc; i++)
-                {
-                    toproc.put(end);
-                }
+                toproc.put_nowait(end);
             }
             for (int i=0; i<total_jobs_proc; i++)
             {
@@ -1663,18 +1704,15 @@ int main(int argc, char** argv)
             }
             debug_output("proc thread joined\n");
 
-            if (ev_id == 0)
+            for (int i=0; i<jobs_save; i++)
             {
-                for (int i=0; i<jobs_save; i++)
+                if (raw_output)
                 {
-                    if (raw_output)
-                    {
-                        torawsave.put(end);
-                    }
-                    else
-                    {
-                        tosave.put(end);
-                    }
+                    torawsave.put_nowait(end);
+                }
+                else
+                {
+                    tosave.put_nowait(end);
                 }
             }
             for (int i=0; i<jobs_save; i++)

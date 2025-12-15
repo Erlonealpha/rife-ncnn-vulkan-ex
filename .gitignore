@@ -1,6 +1,12 @@
 /build
+/buildx
 /stream
+/.cache
 *.exe
 *.diff
 
 /.vscode
+/.vs
+
+.clangd
+compile_commands.json
