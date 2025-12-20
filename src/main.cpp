@@ -1,7 +1,7 @@
 // rife implemented with ncnn library
 
 #include <stdio.h>
-#include <map>
+#include <unordered_map>
 #include <algorithm>
 #include <queue>
 #include <vector>
@@ -32,55 +32,19 @@
 #endif // _WIN32
 #include "webp_image.h"
 
+#include "progress.h"
 
 bool gdebug = false;
 
-std::atomic<bool> g_interrupted(false);   // ev 1
-std::atomic<bool> g_stopped(false);       // ev 2
-std::vector<std::function<void()>> g_stop_callbacks;
+Progress progress;
 
-void print_impl(const char* message, va_list args)
-{
-    vfprintf(stderr, message, args);
-}
-void wprint_impl(const wchar_t* message, va_list args)
-{
-    vfwprintf(stderr, message, args);
-}
+#define rprint(fmt, ...)    progress.console.rprint(fmt, __VA_ARGS__)
+#define rwprint(fmt, ...)   progress.console.rwprint(fmt, __VA_ARGS__)
+#define print(fmt, ...)     progress.console.print(fmt, __VA_ARGS__)
+#define wprint(fmt, ...)    progress.console.wprint(fmt, __VA_ARGS__)
 
-void print(const char* message, ...)
-{
-    va_list args;
-    va_start(args, message);
-    print_impl(message, args);
-}
-
-void wprint(const wchar_t* message, ...)
-{
-    va_list args;
-    va_start(args, message);
-    wprint_impl(message, args);
-}
-
-void debug_output(const char* message, ...)
-{
-    if (gdebug)
-    {
-        va_list args;
-        va_start(args, message);
-        print_impl(message, args);
-    }
-}
-
-void debug_outputw(const wchar_t* message, ...)
-{
-    if (gdebug)
-    {
-        va_list args;
-        va_start(args, message);
-        wprint_impl(message, args);
-    }
-}
+#define debug_output(fmt, ...)  (gdebug? print(fmt, __VA_ARGS__) : (void)0)
+#define debug_outputw(fmt, ...) (gdebug? wprint(fmt, __VA_ARGS__) : (void)0)
 
 #if _WIN32
 #include <wchar.h>
@@ -156,33 +120,32 @@ static std::vector<int> parse_optarg_int_array(const char* optarg)
 #include "rife.h"
 
 #include "filesystem_utils.h"
-#include "progress.h"
 #include "input.h"
 
 static void print_usage()
 {
-    print("Usage: rife-ncnn-vulkan-ex -0 infile -1 infile1 -o outfile [options]...\n");
-    print("       rife-ncnn-vulkan-ex -i indir -o outdir [options]...\n\n");
-    print("  -h                   show this help\n");
-    print("  -v                   verbose output\n");
-    print("  -0 input0-path       input image0 path (jpg/png/webp)\n");
-    print("  -1 input1-path       input image1 path (jpg/png/webp)\n");
-    print("  -i input-path        input image directory (jpg/png/webp)\n");
-    print("  -o output-path       output image path (jpg/png/webp) or directory\n");
-    print("  -n num-frame         target frame count (default=N*2)\n");
-    print("  -s time-step         time step (0~1, default=0.5)\n");
-    print("  -m model-path        rife model path (default=rife-v2.3)\n");
-    print("  -g gpu-id            gpu device to use (-1=cpu, default=auto) can be 0,1,2 for multi-gpu\n");
-    print("  -j load:proc:save    thread count for load/proc/save (default=1:2:2)\n");
-    print("                       (when '-r' specified, save is forced to 1) can be 1:2,2,2:2 for multi-gpu\n");
-    print("  -r                   raw output to stdout (no jpg/png/webp output)\n");
-    print("  -x                   enable spatial tta mode\n");
-    print("  -z                   enable temporal tta mode\n");
-    print("  -u                   enable UHD mode\n");
-    print("  -f pattern-format    output image filename pattern format (%%08d.jpg/png/webp, default=ext/%%08d.png)\n");
-    print("  -p progress          show progress (0=off, 1=on, default=1)\n");
-    print("  -t progress-interval progress update interval in seconds (default=0.5)\n");
-    print("  -d                   enable debug output\n\n");
+    rprint("Usage: rife-ncnn-vulkan-ex -0 infile -1 infile1 -o outfile [options]...\n");
+    rprint("       rife-ncnn-vulkan-ex -i indir -o outdir [options]...\n\n");
+    rprint("  -h                   show this help\n");
+    rprint("  -v                   verbose output\n");
+    rprint("  -0 input0-path       input image0 path (jpg/png/webp)\n");
+    rprint("  -1 input1-path       input image1 path (jpg/png/webp)\n");
+    rprint("  -i input-path        input image directory (jpg/png/webp)\n");
+    rprint("  -o output-path       output image path (jpg/png/webp) or directory\n");
+    rprint("  -n num-frame         target frame count (default=N*2)\n");
+    rprint("  -s time-step         time step (0~1, default=0.5)\n");
+    rprint("  -m model-path        rife model path (default=rife-v2.3)\n");
+    rprint("  -g gpu-id            gpu device to use (-1=cpu, default=auto) can be 0,1,2 for multi-gpu\n");
+    rprint("  -j load:proc:save    thread count for load/proc/save (default=1:2:2)\n");
+    rprint("                       (when '-r' specified, save is forced to 1) can be 1:2,2,2:2 for multi-gpu\n");
+    rprint("  -r                   raw output to stdout (no jpg/png/webp output)\n");
+    rprint("  -x                   enable spatial tta mode\n");
+    rprint("  -z                   enable temporal tta mode\n");
+    rprint("  -u                   enable UHD mode\n");
+    rprint("  -f pattern-format    output image filename pattern format (%%08d.jpg/png/webp, default=ext/%%08d.png)\n");
+    rprint("  -p progress          show progress (0=off, 1=on, default=1)\n");
+    rprint("  -t progress-interval progress update interval in seconds (default=0.5)\n");
+    rprint("  -d                   enable debug output\n\n");
 }
 
 static int decode_image(const path_t& imagepath, ncnn::Mat& image, int* webp)
@@ -293,23 +256,23 @@ static int encode_image(const path_t& imagepath, const ncnn::Mat& image)
     return success ? 0 : -1;
 }
 
-void call_stop_callbacks()
-{
-    if (!g_stop_callbacks.empty())
-    {
-        for (auto callback : g_stop_callbacks)
-        {
-            callback();
-        }
-    }
-}
 
-#define STATE_EMPTY -1
-#define STATE_IDLE 0
-#define STATE_RUNNING 1
-#define STATE_PAUSED 2
-#define STATE_STOPPED 3
-#define STATE_INTERRUPTED 4
+#define STATE_EMPTY         0x0001
+#define STATE_IDLE          0x0002
+#define STATE_RUNNING       0x0004
+#define STATE_PAUSED        0x0008
+#define STATE_STOPPED       0x0010
+#define STATE_INTERRUPTED   0x0020
+
+#define TRANSIT_NONE        0x0040
+#define TRANSIT_PAUSING     0x0080
+#define TRANSIT_RESUMING    0x0100
+
+struct CallbackContext{
+    int state;
+    std::function<void(int)> callback;
+    const char* name;
+};
 
 class ProcessController
 {
@@ -322,28 +285,23 @@ public:
         return ret;
     }
 
-    int pausing()
+    int state_transit()
     {
         lock.lock();
-        int ret = _pausing;
+        int ret = _transit;
         lock.unlock();
         return ret;
     }
 
-    int resuming()
-    {
-        lock.lock();
-        int ret = _resuming;
-        lock.unlock();
-        return ret;
-    }
-
+    /*
+        @param state_id: STATE_RUNNING | STATE_STOPPED | STATE_INTERRUPTED
+    */
     void set_state(int state_id)
     {
         switch (state_id)
         {
         case STATE_RUNNING:
-            _state = STATE_RUNNING;
+            _set_state(STATE_RUNNING);
             break;
         case STATE_INTERRUPTED:
             set_interrupted();
@@ -354,6 +312,10 @@ public:
         }
     }
 
+    /*
+        @param state_id: STATE_PAUSED | STATE_RUNNING
+        @param value: true | false
+    */
     void set_state(int state_id, bool value)
     {
         switch (state_id)
@@ -361,25 +323,24 @@ public:
         case STATE_PAUSED:
             set_paused(value);
             break;
-        case STATE_RUNNING:
-            break;
-        case STATE_IDLE:
-            break;
         }
+    }
+
+    inline bool is_stopped_fast()
+    {
+        return stop_flag.load(std::memory_order_acquire);
     }
 
     int wait_resume() // wait until resuming and return the new state
     {
-        debug_output("ProcessController: wait_resume waiting\n");
         lock.lock();
-        paused_count++;
+        action_done_count++;
         _check_pause_state();
         condition.wait(lock);
-        resumed_count++;
+        action_done_count++;
         _check_pause_state();
         int ret = _state;
         lock.unlock();
-        debug_output("ProcessController: wait_resume resumed\n");
         return ret;
     }
 
@@ -399,133 +360,229 @@ public:
         lock.unlock();
     }
 
-private:
-    void set_stopped()
+    /*
+        @attention: 不要在回调函数中获取ProcessController的锁，否则会导致死锁。
+        @attention: Do not get the lock of ProcessController in the callback function, 
+                    otherwise it will cause deadlock.
+    */
+    void register_callback(const char* name, int state, std::function<void(int)> callback)
     {
         lock.lock();
-        if (_state == STATE_PAUSED || _pausing)
-        {
-            _set_paused(false);
-        }
-        else if (!(_state == STATE_RUNNING || _state == STATE_IDLE))
-        {
-            lock.unlock();
-            return;
-        }
-        _set_stopped();
+        callbacks.push_back({ state, callback, name });
         lock.unlock();
     }
 
-    void _set_stopped()
+    void unregister_callback(const char* name)
     {
-        debug_output("ProcessController: _set_stopped\n");
-        _state = STATE_STOPPED;
-        call_stop_callbacks();
+        lock.lock();
+        for (auto it = callbacks.begin(); it!= callbacks.end(); it++)
+        {
+            if (it->name == name)
+            {
+                callbacks.erase(it);
+                break;
+            }
+        }
+        lock.unlock();
+    }
+private:
+    void set_paused(bool paused)
+    {
+        lock.lock();
+
+        if (_transit != TRANSIT_NONE)
+        {
+            debug_output("set paused during transit\n");
+            lock.unlock();
+            return;
+        }
+
+        if (paused)
+        {
+            if (_state != STATE_RUNNING)
+            {
+                debug_output("set pause but not running\n");
+                lock.unlock();
+                return;
+            }
+
+            _set_transit(TRANSIT_PAUSING);
+            action_done_count = 0;
+            debug_output("set pause\n");
+        }
+        else
+        {
+            if (_state != STATE_PAUSED)
+            {
+                debug_output("set resume but not paused\n");
+                lock.unlock();
+                return;
+            }
+
+            _set_transit(TRANSIT_RESUMING);
+            action_done_count = 0;
+            condition.broadcast();
+            debug_output("set resume\n");
+        }
+
+        lock.unlock();
+    }
+
+    void set_stopped()
+    {
+        lock.lock();
+
+        // 正在 pausing：等 pause 完成 → resume → stop
+        if (_transit == TRANSIT_PAUSING)
+        {
+            debug_output("set pending stop during pausing\n");
+            _pending_state = STATE_STOPPED;
+            lock.unlock();
+            return;
+        }
+
+        // 已 paused：先 resume，再 stop
+        if (_state == STATE_PAUSED)
+        {
+            debug_output("set pending stop during paused\n");
+            _set_transit(TRANSIT_RESUMING);
+            _pending_state = STATE_STOPPED;
+            action_done_count = 0;
+            condition.broadcast();
+            lock.unlock();
+            return;
+        }
+
+        // running / idle：直接 stop
+        if (_state == STATE_RUNNING || _state == STATE_IDLE)
+        {
+            debug_output("set stop\n");
+            _do_stop();
+        }
+
+        lock.unlock();
     }
 
     void set_interrupted()
     {
         lock.lock();
-        if (_state == STATE_PAUSED || _pausing)
+
+        if (_transit == TRANSIT_PAUSING)
         {
-            _set_paused(false);
-        }
-        else if (!(_state == STATE_RUNNING || _state == STATE_IDLE))
-        {
+            debug_output("set pending interrupt during pausing\n");
+            _pending_state = STATE_INTERRUPTED;
             lock.unlock();
             return;
         }
-        _set_interrupted();
-        lock.unlock();
-    }
 
-    void _set_interrupted()
-    {
-        debug_output("ProcessController: _set_interrupted\n");
-        _state = STATE_INTERRUPTED;
-        call_stop_callbacks();
-    }
-
-    void set_paused(bool paused)
-    {
-        lock.lock();
-        if (!(_state == STATE_RUNNING || _state == STATE_PAUSED) || _pausing || _resuming)
+        if (_state == STATE_PAUSED)
         {
+            debug_output("set pending interrupt during paused\n");
+            _set_transit(TRANSIT_RESUMING);
+            _pending_state = STATE_INTERRUPTED;
+            action_done_count = 0;
+            condition.broadcast();
             lock.unlock();
             return;
         }
-        _set_paused(paused);
-        lock.unlock();
-    }
 
-    void _set_paused(bool paused)
-    {
-        debug_output("ProcessController: _set_paused %d\n", paused);
-        if (paused)
+        if (_state == STATE_RUNNING || _state == STATE_IDLE)
         {
-            paused_count = 0;
-            _pausing = true;
-            _state = STATE_PAUSED;
+            debug_output("set interrupt\n");
+            _do_interrupt();
         }
-        else
-        {
-            resumed_count = 0;
-            _resuming = true;
-            _state = STATE_RUNNING;
-            condition.broadcast(); // wake up all threads
-        }
+
+        lock.unlock();
     }
 
     void _check_pause_state()
     {
-        if (_pausing)
+        if (_transit == TRANSIT_NONE)
+            return;
+
+        if (request_size != 0 && action_done_count != request_size)
+            return;
+
+        if (_transit == TRANSIT_PAUSING)
         {
-            if (paused_count == request_size || request_size == 0)
-            {
-                _pausing = false;
-                paused_count = 0;
-            }
+            debug_output("ProcessController: pausing done\n");
+            _set_state(STATE_PAUSED);
         }
-        else if (_resuming)
+        else if (_transit == TRANSIT_RESUMING)
         {
-            if (resumed_count == request_size || request_size == 0)
+            debug_output("ProcessController: resuming done\n");
+            _set_state(STATE_RUNNING);
+        }
+
+        _set_transit(TRANSIT_NONE);
+        action_done_count = 0;
+
+        if (_pending_state == STATE_STOPPED)
+        {
+            _pending_state = STATE_EMPTY;
+            _do_stop();
+        }
+        else if (_pending_state == STATE_INTERRUPTED)
+        {
+            _pending_state = STATE_EMPTY;
+            _do_interrupt();
+        }
+    }
+
+    void _do_stop()
+    {
+        debug_output("ProcessController: do_stop\n");
+        _set_state(STATE_STOPPED);
+        stop_flag.store(true, std::memory_order_release);
+    }
+
+    void _do_interrupt()
+    {
+        debug_output("ProcessController: do_interrupt\n");
+        _set_state(STATE_INTERRUPTED);
+        stop_flag.store(true, std::memory_order_release);
+    }
+
+    void _set_state(int state)
+    {
+        _state = state;
+        _handle_callbacks(state);
+    }
+
+    void _set_transit(int transit)
+    {
+        _transit = transit;
+        _handle_callbacks(transit);
+    }
+
+    void _handle_callbacks(int state)
+    {
+        for (auto& callback : callbacks)
+        {
+            if (state & callback.state)
             {
-                _resuming = false;
-                resumed_count = 0;
+                callback.callback(state);
             }
         }
     }
 
     int _state = STATE_IDLE;
-    bool _pausing = false;
-    bool _resuming = false;
-    int request_size = 0;  // must <= 3, load/proc/save
-    int paused_count = 0;  // count of pauses
-    int resumed_count = 0; // count of resumes
+    int _transit = TRANSIT_NONE;
+    int _pending_state = STATE_EMPTY;  // 延迟合并的目标（STOP / INTERRUPT）
+
+    int request_size = 0;              // 等待完成的请求数
+    int action_done_count = 0;         // 已完成的请求数
+
+    std::atomic<bool> stop_flag{false};
     ncnn::Mutex lock;
-    ncnn::ConditionVariable condition; // for pause/resume
+    ncnn::ConditionVariable condition;
+    std::vector<CallbackContext> callbacks;
 };
 
 ProcessController process_controller;
 
-void stop_with_error(const char* message,...)
-{
-    va_list args;
-    va_start(args, message);
-    print_impl(message, args);
-
-    g_stopped.store(true, std::memory_order_release);
-    call_stop_callbacks();
-}
-void stop_with_errorw(const wchar_t* message,...)
-{
-    va_list args;
-    va_start(args, message);
-    wprint_impl(message, args);
-
-    g_stopped.store(true, std::memory_order_release);
-    call_stop_callbacks();
-}
+#define stop_with_error(message,...)    {print(message, __VA_ARGS__);  process_controller.set_state(STATE_STOPPED);}
+#define stop_with_errorw(message,...)   {wprint(message, __VA_ARGS__); process_controller.set_state(STATE_STOPPED);}
 
 void image_release(ncnn::Mat& image, int webp = 0)
 {
@@ -662,7 +719,7 @@ public:
         }
     }
 private:
-    std::map<path_t, CacheEntry> cache;
+    std::unordered_map<path_t, CacheEntry> cache;
     ncnn::Mutex pool_lock;
 };
 
@@ -683,7 +740,7 @@ public:
         in0image(other.in0image),
         in1image(other.in1image),
         outimage(other.outimage){}
-    Task operator=(const Task& other)
+    Task& operator=(const Task& other)
     {
         if (this == &other)
             return *this;
@@ -836,16 +893,48 @@ TaskQueue<Task> toproc;
 TaskQueue<Task> tosave;
 TaskQueue<Task> torawsave;
 
-Progress progress;
+enum CheckStateResult {
+    CHECK_OK,
+    CHECK_INTERRUPTED,
+    CHECK_STOPPED,
+    CHECK_NEED_PAUSE
+};
 
-// return 0: null, 1: interrupted, 2: stopped
-int check_event()
+CheckStateResult check_state(bool pause_later = false)
 {
-    if (g_interrupted.load(std::memory_order_relaxed))
-        return 1;
-    if (g_stopped.load(std::memory_order_relaxed))
-        return 2;
-    return 0;
+    if (pause_later) return CHECK_NEED_PAUSE;
+    if (process_controller.is_stopped_fast())
+    {
+        int state = process_controller.state();
+        if (state == STATE_INTERRUPTED) return CHECK_INTERRUPTED;
+        else if (state == STATE_STOPPED) return CHECK_STOPPED;
+        else stop_with_error("check_state: unexpected state, state = %d", state); // should never happen
+        return CHECK_STOPPED;
+    }
+    int state_transit = process_controller.state_transit();
+    if (state_transit == TRANSIT_PAUSING) return CHECK_NEED_PAUSE;
+    else if (state_transit == TRANSIT_RESUMING) return CHECK_OK;
+    return CHECK_OK;
+}
+
+CheckStateResult check_state_stop(bool only_stop_flag = false)
+{
+    if (process_controller.is_stopped_fast())
+    {
+        int state = process_controller.state();
+        if (state == STATE_INTERRUPTED) return CHECK_INTERRUPTED;
+        else if (state == STATE_STOPPED) return CHECK_STOPPED;
+        else stop_with_error("check_state: unexpected state, state = %d", state); // should never happen
+        return CHECK_STOPPED;
+    }
+    return CHECK_OK;
+}
+
+CheckStateResult check_state_transit(bool only_stop_flag = false)
+{
+    int state_transit = process_controller.state_transit();
+    if (state_transit == TRANSIT_PAUSING) return CHECK_NEED_PAUSE;
+    return CHECK_OK;
 }
 
 class LoadThreadParams
@@ -863,15 +952,25 @@ public:
 void* load(void* args)
 {
     debug_output("load thread started\n");
+    process_controller.request_increase();
 
     const LoadThreadParams* ltp = (const LoadThreadParams*)args;
 
     for (;;)
     {
+        switch (check_state())
         {
-            int r = check_event();
-            if (r == 1)      goto load_interrupted;
-            else if (r == 2) goto load_stopped;
+        case CHECK_STOPPED:
+            goto load_stopped;
+        case CHECK_INTERRUPTED:
+            goto load_interrupted;
+        case CHECK_NEED_PAUSE:
+            debug_output("load thread: into pause\n");
+            process_controller.wait_resume();
+            debug_output("load thread: wait resumed");
+            break;
+        case CHECK_OK:
+            break;
         }
 
         if (toload.empty()) break;
@@ -879,7 +978,7 @@ void* load(void* args)
         int i;
         toload.get(i);
 
-        if (ltp->raw_output && ltp->bitmap[i])
+        if (ltp->raw_output && ltp->bitmap[i]) // FIXME
         {
             // 加载已经存在的输出图像输出到stdout
             Task v;
@@ -914,7 +1013,6 @@ void* load(void* args)
             }
             else
             {
-                // 失败了也需要标记
                 imagepool.release(image0path);
                 imagepool.release(image1path);
             }
@@ -923,12 +1021,14 @@ void* load(void* args)
     }
 
     debug_output("load thread finished\n");
-    return 0;
+    goto load_cleanup;
 load_interrupted:
     debug_output("load thread interrupted\n");
-    return 0;
+    goto load_cleanup;
 load_stopped:
     debug_output("load thread stopped\n");
+load_cleanup:
+    process_controller.request_decrease();
     return 0;
 }
 
@@ -942,29 +1042,57 @@ public:
 void* proc(void* args)
 {
     debug_output("proc thread started\n");
+    process_controller.request_increase();
 
     const ProcThreadParams* ptp = (const ProcThreadParams*)args;
     const RIFE* rife = ptp->rife;
 
     for (;;)
     {
+        bool pause_later = false;
+        switch (check_state())
         {
-            int r = check_event();
-            if (r == 1)      goto proc_interrupted;
-            else if (r == 2) goto proc_stopped;
+        case CHECK_STOPPED:
+            goto proc_stopped;
+        case CHECK_INTERRUPTED:
+            goto proc_interrupted;
+        case CHECK_NEED_PAUSE:
+            pause_later = true;
+            break;
+        case CHECK_OK:
+            break;
+        }
+
+        // toproc empty       原地暂停
+        // toproc full|other  释放可能的put阻塞后暂停
+        if (pause_later && toproc.empty())
+        {
+            debug_output("proc thread: into pause 1\n");
+            process_controller.wait_resume();
+            debug_output("proc thread: wait resumed 1");
+            pause_later = false;
         }
 
         Task v;
-
         toproc.get(v);
-        {
-            int r = check_event();
-            if (r == 1)      goto proc_interrupted;
-            else if (r == 2) goto proc_stopped;
-        }
 
         if (v.id == -233)
             break;
+
+        switch (check_state(pause_later))
+        {
+        case CHECK_STOPPED:
+            goto proc_stopped;
+        case CHECK_INTERRUPTED:
+            goto proc_interrupted;
+        case CHECK_NEED_PAUSE:
+            debug_output("proc thread: into pause 2\n");
+            process_controller.wait_resume();
+            debug_output("proc thread: wait resumed 2");
+            break;
+        case CHECK_OK:
+            break;
+        }
 
         rife->process(v.in0image, v.in1image, v.timestep, v.outimage);
 
@@ -981,12 +1109,14 @@ void* proc(void* args)
     }
 
     debug_output("proc thread finished\n");
-    return 0;
+    goto proc_cleanup;
 proc_interrupted:
     debug_output("proc thread interrupted\n");
-    return 0;
+    goto proc_cleanup;
 proc_stopped:
     debug_output("proc thread stopped\n");
+proc_cleanup:
+    process_controller.request_decrease();
     return 0;
 }
 
@@ -999,18 +1129,50 @@ public:
 void* save(void* args)
 {
     debug_output("save thread started\n");
+    process_controller.request_increase();
 
     const SaveThreadParams* stp = (const SaveThreadParams*)args;
     const int verbose = stp->verbose;
-
     for (;;)
     {
-        Task v;
+        bool pause_later = false;
+        switch (check_state())
+        {
+        case CHECK_STOPPED:
+            goto save_stopped;
+        case CHECK_INTERRUPTED:
+            goto save_interrupted;
+        case CHECK_NEED_PAUSE:
+            pause_later = true;
+            break;
+        case CHECK_OK:
+        break;
+    }
+    
+        if (pause_later && tosave.empty())
+        {
+            debug_output("save thread: into pause 1\n");
+            process_controller.wait_resume();
+            debug_output("save thread: wait resumed 1");
+            pause_later = false;
+        }
 
+        Task v;
         tosave.get(v);
 
         if (v.id == -233)
             break;
+
+        switch (check_state_transit(pause_later)) // 对于save线程保证哪怕接受到中断信号也要将当前任务完成
+        {
+        case CHECK_NEED_PAUSE:
+            debug_output("save thread: into pause 2\n");
+            process_controller.wait_resume();
+            debug_output("save thread: wait resumed 2");
+            break;
+        default:
+            break;
+        }
 
         int ret = encode_image(v.outpath, v.outimage);
         imagepool.release(v.in0path);
@@ -1027,18 +1189,17 @@ void* save(void* args)
             }
         }
         progress.update(0, 0, 1);
-        int r = check_event();
-        if (r == 1)      goto save_interrupted;
-        else if (r == 2) goto save_stopped;
     }
 
     debug_output("save thread finished\n");
-    return 0;
+    goto save_cleanup;
 save_interrupted:
     debug_output("save thread interrupted\n");
-    return 0;
+    goto save_cleanup;
 save_stopped:
     debug_output("save thread stopped\n");
+save_cleanup:
+    process_controller.request_decrease();
     return 0;
 }
 
@@ -1056,7 +1217,10 @@ static void write_bgr24_to_stdout(int w, int h, int c, void* bgrdata)
         unsigned char* data = 0;
         data = (unsigned char*)malloc(h * stride);
         if (!data)
+        {
+            stop_with_error("\nError: Failed to allocate memory for image data.");
             return;
+        }
 
         for (int y = 0; y < h; y++)
         {
@@ -1093,6 +1257,7 @@ static void write_bgr24_to_stdout(int w, int h, int c, void* bgrdata)
 void* raw_save(void* args)
 {
     debug_output("raw save thread started\n");
+    process_controller.request_increase();
 
     const RawSaveThreadParams* rstp = (const RawSaveThreadParams*)args;
     const int start_id = rstp->start_id;
@@ -1103,25 +1268,46 @@ void* raw_save(void* args)
     std::vector<int> pending_ids;
     std::vector<ncnn::Mat> pending_images;
     pending_images.resize(total-start_id);
-    
     for (;;)
     {
-        Task v;
+        bool pause_later = false;
+        switch (check_state())
+        {
+        case CHECK_STOPPED:
+            goto raw_save_stopped;
+        case CHECK_INTERRUPTED:
+            goto raw_save_interrupted;
+        case CHECK_NEED_PAUSE:
+            pause_later = true;
+            break;
+        case CHECK_OK:
+            break;
+        }
 
+        if (pause_later && torawsave.empty())
         {
-            int r = check_event();
-            if (r == 1)      goto raw_save_interrupted;
-            else if (r == 2) goto raw_save_stopped;
+            debug_output("raw save thread: into pause 1\n");
+            process_controller.wait_resume();
+            debug_output("raw save thread: wait resumed 1");
+            pause_later = false;
         }
+
+        Task v;
         torawsave.get(v);
-        {
-            int r = check_event();
-            if (r == 1)      goto raw_save_interrupted;
-            else if (r == 2) goto raw_save_stopped;
-        }
 
         if (v.id == -233)
             break;
+
+        switch (check_state_transit(pause_later))
+        {
+        case CHECK_NEED_PAUSE:
+            debug_output("raw save thread: into pause 2\n");
+            process_controller.wait_resume();
+            debug_output("raw save thread: wait resumed 2");
+            break;
+        default:
+            break;
+        }
 
         int now_id = v.id - offset;
 
@@ -1160,17 +1346,18 @@ void* raw_save(void* args)
         progress.update(0, 0, 1);
     }
     debug_output("raw save thread finished\n");
-    goto cleanup;
+    goto raw_save_cleanup;
 raw_save_interrupted:
     debug_output("raw save thread interrupted\n");
-    goto cleanup;
+    goto raw_save_cleanup;
 raw_save_stopped:
     debug_output("raw save thread stopped\n");
-cleanup:
+raw_save_cleanup:
     for (int i = 0; i < pending_images.size(); i++)
     {
         image_release(pending_images[i]);
     }
+    process_controller.request_decrease();
     return 0;
 }
 
@@ -1200,10 +1387,14 @@ void* input_loop(void* args)
     double p_pressed_last = 0;
     for (;;)
     {
+        switch (check_state_stop())
         {
-            int state = process_controller.state();;
-            if (state == STATE_STOPPED)     goto input_loop_stopped;
-            if (state == STATE_INTERRUPTED) goto input_loop_interrupted;
+        case CHECK_STOPPED:
+            goto input_loop_stopped;
+        case CHECK_INTERRUPTED:
+            goto input_loop_interrupted;
+        default:
+            break;
         }
         #ifdef _WIN32
         int key = key_press(itp->hStdIn);
@@ -1218,7 +1409,7 @@ void* input_loop(void* args)
                 process_controller.set_state(STATE_STOPPED);
                 debug_output("stop signal received, stop all tasks...\n");
                 q_pressed = 0;
-                g_stopped.store(true, std::memory_order_release); // next feat
+                break;
             }
             else
             {
@@ -1228,21 +1419,25 @@ void* input_loop(void* args)
         }
         else if (key == KEY_P) // pause/resume
         {
-            if (process_controller.pausing() || process_controller.resuming())
-            {
-                // do nothing
-                continue;
-            }
             if (p_pressed && get_timestamp() - p_pressed_last < 0.5)
             {
-                int state = process_controller.state();
-                if (state == STATE_PAUSED)
+                if (process_controller.state_transit() == TRANSIT_NONE)
                 {
-                    process_controller.set_state(STATE_PAUSED, false);
+                    int state = process_controller.state();
+                    if (state == STATE_PAUSED)
+                    {
+                        debug_output("resume signal received, resume all tasks...\n");
+                        process_controller.set_state(STATE_PAUSED, false);
+                    }
+                    else
+                    {
+                        debug_output("pause signal received, pause all tasks...\n");
+                        process_controller.set_state(STATE_PAUSED, true);
+                    }
                 }
                 else
                 {
-                    process_controller.set_state(STATE_PAUSED, true);
+                    debug_output("pause signal received, but state is changing, ignore...\n");
                 }
                 p_pressed = 0;
             }
@@ -1290,7 +1485,7 @@ void existence_bitmap(const std::vector<path_t>& files, std::vector<bool>& bitma
         int offset = num - 1;
         if (offset < 0 || offset >= bitmap.size()) {
             #if _WIN32
-            wprint(L"file %ls has no corresponding output file\n", files[i].c_str());
+            rwprint(L"file %ls has no corresponding output file\n", files[i].c_str());
             #else // _WIN32
             print("file %s has no corresponding output file\n", files[i].c_str());
             #endif // _WIN32
@@ -1304,20 +1499,17 @@ void sigint_handler(int signal)
 {
     if (signal == SIGINT)
     {
-        // show cursor
-        if (progress.enabled)
-            print("\033[25h");
-        if (g_interrupted.load(std::memory_order_relaxed)) 
+        int state = check_state();
+        if (state == STATE_INTERRUPTED) 
         {
             // second interrupt, terminate immediately.
             print("terminate immediately\n");
             exit(1);
         }
-        else
+        else if (state != STATE_INTERRUPTED)
         {
-            g_interrupted.store(true, std::memory_order_release);
+            process_controller.set_state(STATE_INTERRUPTED);
             print("\ninterrupt signal received, cancel all tasks...\n");
-            call_stop_callbacks();
         }
     }
 }
@@ -1501,25 +1693,25 @@ int main(int argc, char** argv)
 
     if (inputpath.empty() && (timestep <= 0.f || timestep >= 1.f))
     {
-        print("invalid timestep argument, must be 0~1\n");
+        rprint("invalid timestep argument, must be 0~1\n");
         return -1;
     }
 
     if (!inputpath.empty() && numframe < 0)
     {
-        print("invalid numframe argument, must not be negative\n");
+        rprint("invalid numframe argument, must not be negative\n");
         return -1;
     }
 
     if (jobs_load < 1 || jobs_save < 1)
     {
-        print("invalid thread count argument\n");
+        rprint("invalid thread count argument\n");
         return -1;
     }
 
     if (jobs_proc.size() != (gpuid.empty() ? 1 : gpuid.size()) && !jobs_proc.empty())
     {
-        print("invalid jobs_proc thread count argument\n");
+        rprint("invalid jobs_proc thread count argument\n");
         return -1;
     }
 
@@ -1527,7 +1719,7 @@ int main(int argc, char** argv)
     {
         if (jobs_proc[i] < 1)
         {
-            print("invalid jobs_proc thread count argument\n");
+            rprint("invalid jobs_proc thread count argument\n");
             return -1;
         }
     }
@@ -1569,14 +1761,14 @@ int main(int argc, char** argv)
         }
         else
         {
-            print("invalid outputpath extension type\n");
+            rprint("invalid outputpath extension type\n");
             return -1;
         }
     }
 
     if (!raw_output && (format != PATHSTR("png") && format != PATHSTR("webp") && format != PATHSTR("jpg")))
     {
-        print("invalid format argument\n");
+        rprint("invalid format argument\n");
         return -1;
     }
 
@@ -1629,13 +1821,13 @@ int main(int argc, char** argv)
     }
     else
     {
-        print("unknown model dir type\n");
+        rprint("unknown model dir type\n");
         return -1;
     }
 
     if (!rife_v4 && (numframe != 0 || timestep != 0.5))
     {
-        print("only rife-v4 model support custom numframe and timestep\n");
+        rprint("only rife-v4 model support custom numframe and timestep\n");
         return -1;
     }
 
@@ -1652,9 +1844,12 @@ int main(int argc, char** argv)
         if (!inputpath.empty() && path_is_directory(inputpath) && (raw_output || path_is_directory(outputpath)))
         {
             std::vector<path_t> exists_output_files;
-            int lr_o = list_directory(outputpath, exists_output_files);
-            if (lr_o != 0 && !raw_output)
-                return -1;
+            if (!outputpath.empty())
+            {
+                int lr_o = list_directory(outputpath, exists_output_files);
+                if (lr_o != 0 && !raw_output)
+                    return -1;
+            }
             std::vector<path_t> filenames;
             int lr = list_directory(inputpath, filenames);
             if (lr != 0)
@@ -1698,7 +1893,7 @@ int main(int argc, char** argv)
                     fx = 1.f;
                 }
 
-//                 print("%d %f %d\n", i, fx, sx);
+//                 rprint("%d %f %d\n", i, fx, sx);
 
                 path_t filename0 = filenames[sx];
                 path_t filename1 = filenames[sx + 1];
@@ -1734,8 +1929,8 @@ int main(int argc, char** argv)
         }
         else
         {
-            print("input0path, input1path and outputpath must be file at the same time\n");
-            print("inputpath and outputpath must be directory at the same time\n");
+            rprint("input0path, input1path and outputpath must be file at the same time\n");
+            rprint("inputpath and outputpath must be directory at the same time\n");
             return -1;
         }
     }
@@ -1747,14 +1942,45 @@ int main(int argc, char** argv)
     else
     {
         // hide cursor
-        print("\033[?25l");
+        progress.console.show_cursor(false);
+        process_controller.register_callback("ProgressInfoUpdate", 
+            STATE_PAUSED | TRANSIT_PAUSING | TRANSIT_RESUMING | STATE_STOPPED | STATE_INTERRUPTED,
+            [](int state)
+            {
+                switch(state)
+                {
+                case STATE_PAUSED:
+                    progress.refresh(true, " (paused)");
+                    break;
+                case TRANSIT_PAUSING:
+                    progress.refresh(true, " (pausing)");
+                    break;
+                case TRANSIT_RESUMING:
+                    progress.refresh(true, " (resuming)");
+                    break;
+                case STATE_STOPPED:
+                    progress.refresh(true, " (stopped)");
+                    break;
+                case STATE_INTERRUPTED:
+                    progress.refresh(true, " (interrupted)");
+                    break;
+                default:
+                    break; // never reach
+                }
+            });
+        process_controller.register_callback("ProgressShowCursor",
+            STATE_STOPPED | STATE_INTERRUPTED,
+            [](int state)
+            {
+                progress.console.show_cursor(true);
+            });
     }
     progress.interval = progress_interval;
     progress.set_total(total);
     if (skipped > 0) 
     {
         progress.update(skipped, skipped, skipped, true);
-        print("skipped %d frames\n", skipped);
+        rprint("skipped %d frames\n", skipped);
     }
 
     path_t modeldir = sanitize_dirpath(model);
@@ -1771,7 +1997,8 @@ int main(int argc, char** argv)
     }
     #endif
 
-    g_stop_callbacks.push_back([]() { imagepool.cleanup(); });
+    process_controller.register_callback("ImagePoolCleanUp", STATE_STOPPED | STATE_INTERRUPTED,
+                                        [](int state) { imagepool.cleanup(); });
 
     ncnn::create_gpu_instance();
 
@@ -1796,7 +2023,7 @@ int main(int argc, char** argv)
     {
         if (gpuid[i] < -1 || gpuid[i] >= gpu_count)
         {
-            print("invalid gpu device\n");
+            rprint("invalid gpu device\n");
 
             ncnn::destroy_gpu_instance();
             return -1;
@@ -1840,9 +2067,9 @@ int main(int argc, char** argv)
 
     // 当使用 '|' 输出到 stdout 时，CTRL+C 会直接中断程序组，导致无法安全退出
     // 使用 [q] 安全退出，这样ffmpeg才会完成视频的封装，而不是被强制中断
-    print("\n");
-    print("Press [q] twice to safe quit (ffmpeg may not finish the video when [ctrl+c])\n");
-    // print("      [p] twice to pause/resume\n\n"); // impl now
+    rprint("\n");
+    rprint("Press [q] twice to safe quit (ffmpeg may not finish the video when [ctrl+c])\n");
+    rprint("      [p] twice to pause/resume\n\n"); // test now
 
     {
         process_controller.set_state(STATE_RUNNING);
@@ -1938,61 +2165,62 @@ int main(int argc, char** argv)
             Task end;
             end.id = -233;
 
-            g_stop_callbacks.push_back([
-                    end, jobs_save, total_jobs_proc,
-                    jobs_load, raw_output
-                ](){
-                if (raw_output)
+            process_controller.register_callback("MainRoutineEnd", 
+                STATE_STOPPED | STATE_INTERRUPTED, 
+                [end, jobs_save, total_jobs_proc, jobs_load, raw_output]
+                (int state)
                 {
-                    if (torawsave.empty()) // release rawsave->torawsave.get
+                    if (raw_output)
                     {
-                        for (int i = 0; i < jobs_save; i++) 
+                        if (torawsave.empty()) // release rawsave->torawsave.get
                         {
-                            torawsave.put_nowait(end);
+                            for (int i = 0; i < jobs_save; i++) 
+                            {
+                                torawsave.put_nowait(end);
+                            }
+                        }
+                        if (torawsave.full()) // release load->torawsave.put
+                        {
+                            for (;;)
+                            {
+                                if (torawsave.empty()) break;
+                                torawsave.pop();
+                            }
                         }
                     }
-                    if (torawsave.full()) // release load->torawsave.put
+                    else
                     {
-                        for (;;)
+                        if (tosave.empty()) // release save->tosave.get
                         {
-                            if (torawsave.empty()) break;
-                            torawsave.pop();
+                            for (int i = 0; i < jobs_save; i++) 
+                            {
+                                tosave.put_nowait(end);
+                            }
+                        }
+                        if (tosave.full()) // release load->tosave.put
+                        {
+                            for (;;)
+                            {
+                                if (tosave.empty()) break;
+                                tosave.pop();
+                            }
                         }
                     }
-                }
-                else
-                {
-                    if (tosave.empty()) // release save->tosave.get
+                    if (toproc.empty()) // release proc->toproc.get
                     {
-                        for (int i = 0; i < jobs_save; i++) 
+                        for (int i = 0; i < total_jobs_proc; i++)
                         {
-                            tosave.put_nowait(end);
+                            toproc.put_nowait(end);
                         }
                     }
-                    if (tosave.full()) // release load->tosave.put
+                    if (toproc.full()) // release load->toproc.put
                     {
-                        for (;;)
-                        {
-                            if (tosave.empty()) break;
-                            tosave.pop();
+                        for (;;) {
+                            if (toproc.empty()) break;
+                            toproc.pop();
                         }
                     }
-                }
-                if (toproc.empty()) // release proc->toproc.get
-                {
-                    for (int i = 0; i < total_jobs_proc; i++)
-                    {
-                        toproc.put_nowait(end);
-                    }
-                }
-                if (toproc.full()) // release load->toproc.put
-                {
-                    for (;;) {
-                        if (toproc.empty()) break;
-                        toproc.pop();
-                    }
-                }
-            });
+                });
 
             // end
             for (int i=0; i<jobs_load; i++)
@@ -2051,8 +2279,5 @@ int main(int argc, char** argv)
 
     ncnn::destroy_gpu_instance();
 
-    // show cursor
-    if (progress.enabled)
-        print("\033[?25h");
     return 0;
 }
