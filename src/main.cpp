@@ -114,8 +114,9 @@ static std::vector<int> parse_optarg_int_array(const char* optarg)
 // ncnn
 #include "cpu.h"
 #include "gpu.h"
-#include "platform.h"
 #include "benchmark.h"
+
+#include "plat.h"
 
 #include "rife.h"
 
@@ -313,7 +314,7 @@ public:
     }
 
     /*
-        @param state_id: STATE_PAUSED | STATE_RUNNING
+        @param state_id: STATE_PAUSED
         @param value: true | false
     */
     void set_state(int state_id, bool value)
@@ -384,6 +385,71 @@ public:
             }
         }
         lock.unlock();
+    }
+
+    
+    /*
+        等待指定状态
+        返回 -1 表示超时，其他值表示目标状态
+        return -1 means timeout, other values means target state
+        @attention: 如果state和transit同时被修改则优先返回state
+                    state 参数混合transit时可能会等待超过预期的时间
+        @attention: If both state and transit are modified, state is preferred to be returned
+                    when state and transit are mixed, it may wait for more than expected time
+    */
+    int wait_state(int state, unsigned long timeout_ms = INFINITE)
+    {
+        lock.lock();
+
+        bool wait_state_flag =
+            state & (STATE_RUNNING | STATE_PAUSED | STATE_STOPPED | STATE_INTERRUPTED);
+        bool wait_transit_flag =
+            state & (TRANSIT_NONE | TRANSIT_PAUSING | TRANSIT_RESUMING);
+
+        if (!wait_state_flag && !wait_transit_flag)
+        {
+            lock.unlock();
+            return -1; // Invalid state
+        }
+
+        if (wait_state_flag && (_state & state))
+        {
+            int ret = _state;
+            lock.unlock();
+            return ret;
+        }
+        if (wait_transit_flag && (_transit & state))
+        {
+            int ret = _transit;
+            lock.unlock();
+            return ret;
+        }
+
+        int now_state = _state;
+        int now_transit = _transit;
+
+        bool timeout = false;
+        while (_state == now_state && _transit == now_transit)
+        {
+            // may wait multiple times, sleep time may > timeout_ms
+            if (!state_changed_cond.wait(lock, timeout_ms))
+            {
+                timeout = true;
+                break;
+            }
+        }
+
+        int ret = -1;
+        if (!timeout)
+        {
+            if (wait_state_flag && _state != now_state)
+                ret = _state;
+            else if (wait_transit_flag && _transit != now_transit)
+                ret = _transit;
+        }
+
+        lock.unlock();
+        return ret;
     }
 private:
     void set_paused(bool paused)
@@ -546,12 +612,14 @@ private:
     void _set_state(int state)
     {
         _state = state;
+        state_changed_cond.broadcast();
         _handle_callbacks(state);
     }
 
     void _set_transit(int transit)
     {
         _transit = transit;
+        state_changed_cond.broadcast();
         _handle_callbacks(transit);
     }
 
@@ -574,8 +642,9 @@ private:
     int action_done_count = 0;         // 已完成的请求数
 
     std::atomic<bool> stop_flag{false};
-    ncnn::Mutex lock;
-    ncnn::ConditionVariable condition;
+    Mutex lock;
+    ConditionVariable condition;
+    ConditionVariable state_changed_cond;
     std::vector<CallbackContext> callbacks;
 };
 
@@ -720,7 +789,7 @@ public:
     }
 private:
     std::unordered_map<path_t, CacheEntry> cache;
-    ncnn::Mutex pool_lock;
+    Mutex pool_lock;
 };
 
 ImageCachePool imagepool;
@@ -883,8 +952,8 @@ public:
 
 private:
     int _max_size;
-    ncnn::Mutex lock;
-    ncnn::ConditionVariable condition;
+    Mutex lock;
+    ConditionVariable condition;
     std::queue<T> tasks;
 };
 
@@ -1459,6 +1528,52 @@ input_loop_stopped:
     return 0;
 }
 
+void* progress_auto_fresh(void* args)
+{
+    if (!progress.enabled) return 0;
+
+    debug_output("progress auto fresh thread started\n");
+
+    // TODO: modify progress interval dynamically
+    float auto_fresh_interval = 1.0f; 
+
+    for (;;)
+    {
+        switch (check_state_stop())
+        {
+        case CHECK_STOPPED:
+            goto progress_auto_fresh_stopped;
+        case CHECK_INTERRUPTED:
+            goto progress_auto_fresh_interrupted;
+        default:
+            break;
+        }
+
+        double elapsed_time = progress.get_time_elapsed();
+        int ms = static_cast<int>((elapsed_time - floor(elapsed_time)) * 1000);
+        int next = auto_fresh_interval * 1000 - ms;
+
+        if (next > 0)
+        {
+            int ret = process_controller.wait_state(
+                STATE_STOPPED | STATE_INTERRUPTED,
+                static_cast<unsigned long>(next));
+            if (ret == STATE_STOPPED)     goto progress_auto_fresh_stopped;
+            if (ret == STATE_INTERRUPTED) goto progress_auto_fresh_interrupted;
+        }
+
+        progress.update();
+    }
+
+    debug_output("progress auto fresh thread finished\n");
+    return 0;
+progress_auto_fresh_interrupted:
+    debug_output("progress auto fresh thread interrupted\n");
+    return 0;
+progress_auto_fresh_stopped:
+    debug_output("progress auto fresh thread stopped\n");
+    return 0;
+}
 
 int get_num(const path_t& path)
 {
@@ -1944,13 +2059,17 @@ int main(int argc, char** argv)
         // hide cursor
         progress.console.show_cursor(false);
         process_controller.register_callback("ProgressInfoUpdate", 
-            STATE_PAUSED | TRANSIT_PAUSING | TRANSIT_RESUMING | STATE_STOPPED | STATE_INTERRUPTED,
+            STATE_PAUSED | TRANSIT_PAUSING | TRANSIT_RESUMING | STATE_STOPPED | STATE_INTERRUPTED | STATE_RUNNING,
             [](int state)
             {
                 switch(state)
                 {
                 case STATE_PAUSED:
+                    progress.on_paused();
                     progress.refresh(true, " (paused)");
+                    break;
+                case STATE_RUNNING:
+                    progress.on_resumed();
                     break;
                 case TRANSIT_PAUSING:
                     progress.refresh(true, " (pausing)");
@@ -2073,6 +2192,8 @@ int main(int argc, char** argv)
 
     {
         process_controller.set_state(STATE_RUNNING);
+
+        ncnn::Thread progress_auto_fresh_thread = ncnn::Thread(progress_auto_fresh, 0);
 
         #ifdef _WIN32
         HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
@@ -2267,6 +2388,8 @@ int main(int argc, char** argv)
         rife.clear();
 
         process_controller.set_state(STATE_STOPPED);
+
+        progress_auto_fresh_thread.join();
 
         #ifdef _WIN32
         CancelIoEx(hStdIn, NULL); // cancel input thread blocking read

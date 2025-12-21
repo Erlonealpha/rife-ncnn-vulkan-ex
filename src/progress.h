@@ -1,6 +1,10 @@
 #include <chrono>
 #include <sstream>
-#include "platform.h"
+#include "plat.h"
+
+#define MAX_PROGRESS_SIZE 256
+#define MAX_PROGRESS_FIXED_SIZE 128
+#define MAX_PROGRESS_DYNAMIC_SIZE 128
 
 double get_timestamp() 
 {
@@ -45,6 +49,8 @@ void format_time(double seconds, char* buffer)
 class Console
 {
 public:
+    Console() {last_progress[0] = '\0';}
+
     void show_cursor(bool show)
     {
         if (show)
@@ -125,7 +131,7 @@ public:
     void pprint(const char* msg)
     {
         fprintf(stderr, "%s", msg);
-        this->last_progress = const_cast<char*>(msg);
+        snprintf(last_progress, MAX_PROGRESS_SIZE, "%s", msg);
     }
 private:
     void _vprint(const char* fmt, va_list args)
@@ -134,7 +140,6 @@ private:
         {
             fprintf(stderr, "\r%s", CURSOR_CLEAR_LINE);
             vfprintf(stderr, fmt, args);
-            if (last_progress != nullptr)
             fprintf(stderr, last_progress);
         }
         else
@@ -149,7 +154,6 @@ private:
         {
             fprintf(stderr, "\r%s", CURSOR_CLEAR_LINE);
             vfwprintf(stderr, fmt, args);
-            if (last_progress != nullptr)
             fprintf(stderr, last_progress);
         }
         else
@@ -158,9 +162,9 @@ private:
         }
     }
 
-    ncnn::Mutex lock;
+    Mutex lock;
     bool in_progress = false;
-    char* last_progress = nullptr; //  last progress bar message
+    char last_progress[MAX_PROGRESS_SIZE]; //  last progress bar message
     int progress_bar_length = 0;
 };
 
@@ -217,9 +221,8 @@ public:
         
         if (saved > 0)
         { // no update if no save
-            const double time_now = get_timestamp();
-            const double time_delta = time_now - start_time;
-            const double time_delta_last = time_now - last_update_time;
+            double time_now, time_delta, time_delta_last;
+            _get_effective_time(time_now, time_delta, time_delta_last);
             if ((time_delta_last >= interval && time_delta_last != 0.0 && time_delta != 0.0)
                 || saved == total)
                 { // update if interval or finished
@@ -231,9 +234,9 @@ public:
 
     void update(bool store_extra = false, char* extra = nullptr)
     {
-        const double time_now = get_timestamp();
-        const double time_delta = time_now - start_time;
         lock.lock();
+        double time_now, time_delta;
+        _get_effective_time(time_now, time_delta);
         _update(time_now, time_delta, store_extra, extra);
         lock.unlock();
     }
@@ -243,13 +246,60 @@ public:
         _refresh(store_extra, extra);
     }
 
+    void on_paused()
+    {
+        lock.lock();
+        paused_start_time = get_timestamp();
+        lock.unlock();
+    }
+
+    void on_resumed()
+    {
+        // paused_start_time may already be consumed by _get_delta_time()
+        // when auto_fresh is running during PAUSED
+        if (paused_start_time == 0) return;
+        lock.lock();
+        const double time_now = get_timestamp();
+        _update_paused_time(time_now);
+        paused_start_time = 0;
+        lock.unlock();
+    }
+
+    double get_last_update_time()   { lock.lock(); double r = last_update_time; lock.unlock(); return r; }
+    double get_speed()              { lock.lock(); double r = speed; lock.unlock(); return r; }
+    float  get_percent()            { lock.lock(); float  r = percent; lock.unlock(); return r; }
+    double get_time_elapsed()       { lock.lock(); double r = time_elapsed; lock.unlock(); return r; }
+    double get_time_remaining()     { lock.lock(); double r = time_remaining; lock.unlock(); return r; }
+
     Console console;
 private:
+    void _get_effective_time(double& time_now, double& time_delta)
+    {
+        time_now = get_timestamp();
+        if (paused_start_time != 0) _update_paused_time(time_now);
+        time_delta = time_now - start_time - paused_time_total;
+    }
+
+    void _get_effective_time(double& time_now, double& time_delta, double& time_delta_last)
+    {
+        time_now = get_timestamp();
+        if (paused_start_time != 0) _update_paused_time(time_now);
+        time_delta_last = time_now - last_update_time;
+        time_delta = time_now - start_time - paused_time_total;
+    }
+
+    void _update_paused_time(const double time_now)
+    {
+        const double time_delta = time_now - paused_start_time;
+        paused_time_total += time_delta;
+        paused_start_time = time_now;
+    }
+
     void _update(double time_now, double time_delta, bool store_extra = false, char* extra = nullptr)
     {
         this->last_update_time = time_now;
         this->speed = (double)saved_for_speed / time_delta;
-        this->time_elapsed = time_delta;
+        this->time_elapsed = time_delta + paused_time_total;
         
         if (speed != 0.0)
         {
@@ -278,17 +328,20 @@ private:
             extra = "";
         }
 
-        char elapsed_str[128], remaining_str[128];
+        char elapsed_str[32], remaining_str[32];
         format_time(time_elapsed, elapsed_str);
         format_time(time_remaining, remaining_str);
 
-        char fixed[128];
-        char dynamic[128];
-        snprintf(fixed, 256, "%0*.2f%% L %0*d P %0*d S %0*d (%d)",
-                        6, percent, total_length, loaded, 
-                                    total_length, processed, 
-                                    total_length, saved, total);
-        snprintf(dynamic, 256, " speed %.2f i/s elapsed %s remaining %s", speed, elapsed_str, remaining_str);
+        char fixed[MAX_PROGRESS_FIXED_SIZE];
+        char dynamic[MAX_PROGRESS_DYNAMIC_SIZE];
+        snprintf(fixed, MAX_PROGRESS_FIXED_SIZE, 
+                    "%0*.2f%% L %0*d P %0*d S %0*d (%d)",
+                    6, percent, total_length, loaded, 
+                                total_length, processed, 
+                                total_length, saved, total);
+        snprintf(dynamic, MAX_PROGRESS_DYNAMIC_SIZE, 
+                    " speed %.2f i/s elapsed %s remaining %s", 
+                    speed, elapsed_str, remaining_str);
         static thread_local int fixed_length = strlen(fixed);
         static thread_local std::stringstream ss; // thread local to avoid memory allocation
         ss.str(""); // clear previous content
@@ -309,7 +362,7 @@ private:
         console.progress_end();
     }
 
-    ncnn::Mutex lock;
+    Mutex lock;
     int total = 0;
     int loaded = 0;
     int processed = 0;
@@ -324,4 +377,6 @@ private:
     double time_remaining = 0;
     double last_update_time = 0;
     int dynamic_length = 0;
+    double paused_start_time = 0;
+    double paused_time_total = 0;
 };
