@@ -226,7 +226,7 @@ public:
             if ((time_delta_last >= interval && time_delta_last != 0.0 && time_delta != 0.0)
                 || saved == total)
                 { // update if interval or finished
-                    _update(time_now, time_delta, true);
+                    _update(time_now, time_delta, true, "");
                 }
         }
         lock.unlock();
