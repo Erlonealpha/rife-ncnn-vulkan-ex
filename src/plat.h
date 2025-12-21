@@ -6,6 +6,8 @@
 
 #include "platform.h"
 
+constexpr unsigned long WAIT_INFINITE = ULONG_MAX;
+
 // #ifdef _TST // for test
 #if (defined _WIN32 && !(defined __MINGW32__))
 class Mutex
@@ -62,7 +64,7 @@ class ConditionVariable
 public:
     ConditionVariable() { pthread_cond_init(&cond, 0); }
     ~ConditionVariable() { pthread_cond_destroy(&cond); }
-    bool wait(Mutex& mutex, unsigned long timeout_ms = INFINITE) { timespec ts; return pthread_cond_timedwait(&cond, &mutex.mutex, timespec_from_ms(ts, timeout_ms)); }
+    bool wait(Mutex& mutex, unsigned long timeout_ms = WAIT_INFINITE) { timespec ts; return pthread_cond_timedwait(&cond, &mutex.mutex, timespec_from_ms(ts, timeout_ms)); }
     void broadcast() { pthread_cond_broadcast(&cond); }
     void signal() { pthread_cond_signal(&cond); }
 private:

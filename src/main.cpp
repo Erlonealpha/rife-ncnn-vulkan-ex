@@ -38,13 +38,13 @@ bool gdebug = false;
 
 Progress progress;
 
-#define rprint(fmt, ...)    progress.console.rprint(fmt, __VA_ARGS__)
-#define rwprint(fmt, ...)   progress.console.rwprint(fmt, __VA_ARGS__)
-#define print(fmt, ...)     progress.console.print(fmt, __VA_ARGS__)
-#define wprint(fmt, ...)    progress.console.wprint(fmt, __VA_ARGS__)
+#define rprint(fmt, ...)    progress.console.rprint(fmt, ##__VA_ARGS__)
+#define rwprint(fmt, ...)   progress.console.rwprint(fmt, ##__VA_ARGS__)
+#define print(fmt, ...)     progress.console.print(fmt, ##__VA_ARGS__)
+#define wprint(fmt, ...)    progress.console.wprint(fmt, ##__VA_ARGS__)
 
-#define debug_output(fmt, ...)  (gdebug? print(fmt, __VA_ARGS__) : (void)0)
-#define debug_outputw(fmt, ...) (gdebug? wprint(fmt, __VA_ARGS__) : (void)0)
+#define debug_output(fmt, ...)  (gdebug? print(fmt, ##__VA_ARGS__) : (void)0)
+#define debug_outputw(fmt, ...) (gdebug? wprint(fmt, ##__VA_ARGS__) : (void)0)
 
 #if _WIN32
 #include <wchar.h>
@@ -397,7 +397,7 @@ public:
         @attention: If both state and transit are modified, state is preferred to be returned
                     when state and transit are mixed, it may wait for more than expected time
     */
-    int wait_state(int state, unsigned long timeout_ms = INFINITE)
+    int wait_state(int state, unsigned long timeout_ms = WAIT_INFINITE)
     {
         lock.lock();
 
@@ -650,8 +650,8 @@ private:
 
 ProcessController process_controller;
 
-#define stop_with_error(message,...)    {print(message, __VA_ARGS__);  process_controller.set_state(STATE_STOPPED);}
-#define stop_with_errorw(message,...)   {wprint(message, __VA_ARGS__); process_controller.set_state(STATE_STOPPED);}
+#define stop_with_error(message,...)    {print(message, ##__VA_ARGS__);  process_controller.set_state(STATE_STOPPED);}
+#define stop_with_errorw(message,...)   {wprint(message, ##__VA_ARGS__); process_controller.set_state(STATE_STOPPED);}
 
 void image_release(ncnn::Mat& image, int webp = 0)
 {

@@ -140,7 +140,7 @@ private:
         {
             fprintf(stderr, "\r%s", CURSOR_CLEAR_LINE);
             vfprintf(stderr, fmt, args);
-            fprintf(stderr, last_progress);
+            fprintf(stderr, "%s", last_progress);
         }
         else
         {
@@ -154,7 +154,7 @@ private:
         {
             fprintf(stderr, "\r%s", CURSOR_CLEAR_LINE);
             vfwprintf(stderr, fmt, args);
-            fprintf(stderr, last_progress);
+            fprintf(stderr, "%s", last_progress);
         }
         else
         {
@@ -232,7 +232,7 @@ public:
         lock.unlock();
     }
 
-    void update(bool store_extra = false, char* extra = nullptr)
+    void update(bool store_extra = false, const char* extra = nullptr)
     {
         lock.lock();
         double time_now, time_delta;
@@ -241,7 +241,7 @@ public:
         lock.unlock();
     }
 
-    void refresh(bool store_extra = false, char* extra = nullptr)
+    void refresh(bool store_extra = false, const char* extra = nullptr)
     {
         _refresh(store_extra, extra);
     }
@@ -295,7 +295,7 @@ private:
         paused_start_time = time_now;
     }
 
-    void _update(double time_now, double time_delta, bool store_extra = false, char* extra = nullptr)
+    void _update(double time_now, double time_delta, bool store_extra = false, const char* extra = nullptr)
     {
         this->last_update_time = time_now;
         this->speed = (double)saved_for_speed / time_delta;
@@ -313,20 +313,12 @@ private:
         _refresh(store_extra, extra);
     }
 
-    void _refresh(bool store_extra = false, char* extra = nullptr)
+    void _refresh(bool store_extra = false, const char* extra = nullptr)
     {
-        if (store_extra)
-        {
-            this->extra_str = extra;
-        }
-        else if (extra_str != nullptr && extra != extra_str)
-        {
-            extra = extra_str;
-        }
-        if (extra == nullptr)
-        {
-            extra = "";
-        }
+        if (store_extra && extra != nullptr)
+            extra_str = extra;
+        const char* used_extra = extra ? extra : extra_str.c_str();
+        if (!used_extra) used_extra = "";
 
         char elapsed_str[32], remaining_str[32];
         format_time(time_elapsed, elapsed_str);
@@ -345,11 +337,11 @@ private:
         static thread_local int fixed_length = strlen(fixed);
         static thread_local std::stringstream ss; // thread local to avoid memory allocation
         ss.str(""); // clear previous content
-        ss << "\r" << fixed << dynamic << extra;
+        ss << "\r" << fixed << dynamic << used_extra;
         int speed_length;
         if (speed < 1.0) speed_length = 1;
         else speed_length = static_cast<int>(log10(speed)) + 1;
-        int dynamic_length = speed_length + strlen(elapsed_str) + strlen(remaining_str) + 21 + strlen(extra);
+        int dynamic_length = speed_length + strlen(elapsed_str) + strlen(remaining_str) + 21 + strlen(used_extra);
         if (this->dynamic_length != 0 && this->dynamic_length > dynamic_length)
         {
             // clear previous dynamic part
@@ -371,7 +363,7 @@ private:
     int total_length = 1;
     double speed = 0.0f;
     float percent = 0.0f;
-    char* extra_str = nullptr;
+    std::string extra_str;
     double start_time;
     double time_elapsed = 0;
     double time_remaining = 0;
