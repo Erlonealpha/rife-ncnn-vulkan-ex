@@ -1,4 +1,6 @@
 /build
+# for ninja build
+/nbuild
 /buildx
 /stream
 /.cache

@@ -204,6 +204,8 @@ if(NOT USE_SYSTEM_NCNN)
     option(WITH_LAYER_einsum "" OFF)
     option(WITH_LAYER_deformableconv2d "" OFF)
 
+    option(NCNN_STDIO "" ON)
+
     add_subdirectory(ncnn)
 endif()
 

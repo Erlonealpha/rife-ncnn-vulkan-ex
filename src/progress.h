@@ -1,10 +1,16 @@
+#ifndef RIFE_NCNN_PROGRESS_H
+#define RIFE_NCNN_PROGRESS_H
+
 #include <chrono>
 #include <sstream>
-#include "plat.h"
 
 #define MAX_PROGRESS_SIZE 256
 #define MAX_PROGRESS_FIXED_SIZE 128
 #define MAX_PROGRESS_DYNAMIC_SIZE 128
+
+#include "plat.h"
+#include "console.h"
+
 
 double get_timestamp() 
 {
@@ -42,136 +48,11 @@ void format_time(double seconds, char* buffer)
     }
 }
 
-#define CURSOR_CLEAR_LINE "\033[2K"
-#define CURSOR_SHOW "\033[?25h"
-#define CURSOR_HIDE "\033[?25l"
-
-class Console
-{
-public:
-    Console() {last_progress[0] = '\0';}
-
-    void show_cursor(bool show)
-    {
-        if (show)
-        {
-            fprintf(stderr, CURSOR_SHOW);
-        }
-        else
-        {
-            fprintf(stderr, CURSOR_HIDE);
-        }
-    }
-
-    void vprint(const char* fmt, va_list args)
-    {
-        lock.lock();
-        _vprint(fmt, args);
-        lock.unlock();
-    }
-
-    void vwprint(const wchar_t* fmt, va_list args)
-    {
-        lock.lock();
-        _vwprint(fmt, args);
-        lock.unlock();
-    }
-
-    void print(const char* fmt,...)
-    {
-        va_list args;
-        va_start(args, fmt);
-        vprint(fmt, args);
-        va_end(args);
-    }
-
-    void wprint(const wchar_t* fmt,...)
-    {
-        va_list args;
-        va_start(args, fmt);
-        vwprint(fmt, args);
-        va_end(args);
-    }
-
-    void flush()
-    {
-        lock.lock();
-        fflush(stderr);
-        lock.unlock();
-    }
-
-    void progress_start(int length)
-    {
-        lock.lock();
-        progress_bar_length = length;
-    }
-
-    void progress_end()
-    {
-        in_progress = true;
-        lock.unlock();
-    }
-
-    void rprint(const char* fmt, ...)
-    {
-        va_list args;
-        va_start(args, fmt);
-        _vprint(fmt, args);
-        va_end(args);
-    }
-
-    void rwprint(const wchar_t* fmt, ...)
-    {
-        va_list args;
-        va_start(args, fmt);
-        _vwprint(fmt, args);
-        va_end(args);
-    }
-
-    void pprint(const char* msg)
-    {
-        fprintf(stderr, "%s", msg);
-        snprintf(last_progress, MAX_PROGRESS_SIZE, "%s", msg);
-    }
-private:
-    void _vprint(const char* fmt, va_list args)
-    {
-        if (in_progress)
-        {
-            fprintf(stderr, "\r%s", CURSOR_CLEAR_LINE);
-            vfprintf(stderr, fmt, args);
-            fprintf(stderr, "%s", last_progress);
-        }
-        else
-        {
-            vfprintf(stderr, fmt, args);
-        }
-    }
-
-    void _vwprint(const wchar_t* fmt, va_list args)
-    {
-        if (in_progress)
-        {
-            fprintf(stderr, "\r%s", CURSOR_CLEAR_LINE);
-            vfwprintf(stderr, fmt, args);
-            fprintf(stderr, "%s", last_progress);
-        }
-        else
-        {
-            vfwprintf(stderr, fmt, args);
-        }
-    }
-
-    Mutex lock;
-    bool in_progress = false;
-    char last_progress[MAX_PROGRESS_SIZE]; //  last progress bar message
-    int progress_bar_length = 0;
-};
 
 class Progress
 {
 public:
-    Progress()
+    Progress(Console& console) : console(console)
     {
         start_time = get_timestamp();
     }
@@ -199,6 +80,7 @@ public:
         lock.unlock();
     }
 
+    // update with loaded, processed, saved
     void update(int loaded, int processed, int saved, bool no_update_speed = false)
     {
         if (!enabled) return;
@@ -226,12 +108,13 @@ public:
             if ((time_delta_last >= interval && time_delta_last != 0.0 && time_delta != 0.0)
                 || saved == total)
                 { // update if interval or finished
-                    _update(time_now, time_delta, true, "");
+                    _update(time_now, time_delta);
                 }
         }
         lock.unlock();
     }
 
+    // update with extra info
     void update(bool store_extra = false, const char* extra = nullptr)
     {
         lock.lock();
@@ -271,7 +154,6 @@ public:
     double get_time_elapsed()       { lock.lock(); double r = time_elapsed; lock.unlock(); return r; }
     double get_time_remaining()     { lock.lock(); double r = time_remaining; lock.unlock(); return r; }
 
-    Console console;
 private:
     void _get_effective_time(double& time_now, double& time_delta)
     {
@@ -355,6 +237,7 @@ private:
     }
 
     Mutex lock;
+    Console& console;
     int total = 0;
     int loaded = 0;
     int processed = 0;
@@ -372,3 +255,5 @@ private:
     double paused_start_time = 0;
     double paused_time_total = 0;
 };
+
+#endif // RIFE_NCNN_PROGRESS_H
