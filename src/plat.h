@@ -47,7 +47,7 @@ private:
     pthread_mutex_t mutex;
 };
 
-timespec* timespec_from_ms(timespec &ts, unsigned long timeout_ms)
+inline timespec* timespec_from_ms(timespec &ts, unsigned long timeout_ms)
 {
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_sec += timeout_ms / 1000;
@@ -72,5 +72,9 @@ private:
 };
 
 #endif // (defined _WIN32 && !(defined __MINGW32__))
+
+#define MAX_PROGRESS_SIZE 256
+#define MAX_PROGRESS_FIXED_SIZE 128
+#define MAX_PROGRESS_DYNAMIC_SIZE 128
 
 #endif // RIFE_NCNN_PLAT_H

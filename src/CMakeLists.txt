@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.10...3.28)
 
+
+set(FORCE_INCLUDE_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/override.h)
+
+message(STATUS "C Compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER}")
+
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -207,6 +213,13 @@ if(NOT USE_SYSTEM_NCNN)
     option(NCNN_STDIO "" ON)
 
     add_subdirectory(ncnn)
+
+    if(WIN32)
+    target_compile_options(ncnn PRIVATE /FI${FORCE_INCLUDE_FILE_PATH})
+    else()
+    target_compile_options(ncnn PRIVATE -include ${FORCE_INCLUDE_FILE_PATH})
+    endif()
+    message("add ncnn compile options: /FI${FORCE_INCLUDE_FILE_PATH}")
 endif()
 
 if(USE_SYSTEM_WEBP)
@@ -266,6 +279,7 @@ add_executable(rife-ncnn-vulkan-ex
     main.cpp
     rife.cpp
     warp.cpp
+    log.cpp
 )
 
 target_compile_definitions(rife-ncnn-vulkan-ex PRIVATE
@@ -297,5 +311,7 @@ if(USE_STATIC_MOLTENVK)
         ${CoreFoundation}
     )
 endif()
+
+
 
 target_link_libraries(rife-ncnn-vulkan-ex ${RIFE_LINK_LIBRARIES})

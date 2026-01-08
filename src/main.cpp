@@ -32,67 +32,19 @@
 #endif // _WIN32
 #include "webp_image.h"
 
+// ncnn
+#include "cpu.h"
+#include "gpu.h"
+#include "benchmark.h"
+
+#include "rife.h"
+
+#include "filesystem_utils.h"
+#include "override.h"
 #include "progress.h"
+#include "input.h"
 
-#define LDEBUG 0
-#define LINFO 1
-#define LWARNING 2
-#define LERROR 3
-
-bool gverbose = false;
-int gloglevel = LINFO;
-
-Console console;
 Progress progress{console};
-
-#define rprint(fmt,...)    console.rprint(fmt, ##__VA_ARGS__)
-#define rwprint(fmt,...)   console.rwprint(fmt, ##__VA_ARGS__)
-
-#define log(level, fmt,...) \
-    do { \
-        if (level >= gloglevel) { \
-            console.lock_acquire(); \
-            rprint(fmt, ##__VA_ARGS__); \
-            rprint("\n"); \
-            console.lock_release(); \
-        } \
-    } while (0)
-#define logw(level, fmt,...) \
-    do { \
-        if (level >= gloglevel) { \
-            console.lock_acquire(); \
-            rwprint(fmt, ##__VA_ARGS__); \
-            rwprint(L"\n"); \
-            console.lock_release(); \
-        } \
-    } while (0)
-#define logverbose(fmt,...) \
-    do { \
-        if (gverbose) { \
-            console.lock_acquire(); \
-            rprint(fmt, ##__VA_ARGS__); \
-            rprint("\n"); \
-            console.lock_release(); \
-        } \
-    } while (0)
-#define logverbosew(fmt,...) \
-    do { \
-        if (gverbose) { \
-            console.lock_acquire(); \
-            rwprint(fmt, ##__VA_ARGS__); \
-            rwprint(L"\n"); \
-            console.lock_release(); \
-        } \
-    } while (0)
-#define loginfo(fmt,...)  log(LINFO, fmt, ##__VA_ARGS__)
-#define logwarning(fmt,...) log(LWARNING, fmt, ##__VA_ARGS__)
-#define logerror(fmt,...)  log(LERROR, fmt, ##__VA_ARGS__)
-#define logdebug(fmt,...) log(LDEBUG, fmt, ##__VA_ARGS__)
-#define loginfow(fmt,...) logw(LINFO, fmt, ##__VA_ARGS__)
-#define logwarningw(fmt,...) logw(LWARNING, fmt, ##__VA_ARGS__)
-#define logerrorw(fmt,...) logw(LERROR, fmt, ##__VA_ARGS__)
-#define logdebugw(fmt,...) logw(LDEBUG, fmt, ##__VA_ARGS__)
-
 
 #if _WIN32
 #include <wchar.h>
@@ -186,18 +138,6 @@ static int parse_loglevel(const char* optarg)
     return LINFO;
 }
 #endif // _WIN32
-
-// ncnn
-#include "cpu.h"
-#include "gpu.h"
-#include "benchmark.h"
-
-#include "plat.h"
-
-#include "rife.h"
-
-#include "filesystem_utils.h"
-#include "input.h"
 
 static void print_usage()
 {
@@ -2260,7 +2200,7 @@ int main(int argc, char** argv)
     }
     progress.interval = progress_interval;
     progress.set_total(total);
-    if (skipped > 0) 
+    if (skipped > 0)
     {
         progress.update(skipped, skipped, skipped, true);
         loginfo("skipped %d frames", skipped);
@@ -2280,10 +2220,18 @@ int main(int argc, char** argv)
     }
     #endif
 
-    process_controller.register_callback("ImagePoolCleanUp", STATE_STOPPED | STATE_INTERRUPTED,
+    process_controller.register_callback("ImagePoolCleanUp", STATE_STOPPED | STATE_INTERRUPTED | STATE_FINISHED,
                                         [](int state) { imagepool.cleanup(); });
 
-    ncnn::create_gpu_instance();
+    // use g_ncnn_info_suppressed and NCNN_LOGE(...) log_if_not_g_ncnn_info_suppressed
+    // instead of NCNN_LOGE(...) logwarning(...)
+    // better design maybe
+    bool show_info = log_level >= LINFO;
+    if (!show_info)
+        gloglevel = LERROR;
+    ncnn::create_gpu_instance(); // NCNN_LOGE("gpu info");
+    if (!show_info)
+        gloglevel = log_level;
 
     if (gpuid.empty())
     {
@@ -2447,7 +2395,7 @@ int main(int argc, char** argv)
             end.id = -233;
 
             process_controller.register_callback("MainRoutineEnd", 
-                STATE_STOPPED | STATE_INTERRUPTED, 
+                STATE_STOPPED | STATE_INTERRUPTED | STATE_FINISHED, 
                 [end, jobs_save, total_jobs_proc, jobs_load, raw_output]
                 (int state)
                 {

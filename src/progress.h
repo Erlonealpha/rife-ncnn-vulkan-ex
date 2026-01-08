@@ -4,11 +4,6 @@
 #include <chrono>
 #include <sstream>
 
-#define MAX_PROGRESS_SIZE 256
-#define MAX_PROGRESS_FIXED_SIZE 128
-#define MAX_PROGRESS_DYNAMIC_SIZE 128
-
-#include "plat.h"
 #include "console.h"
 
 

@@ -1,20 +1,16 @@
 #ifndef RIFE_NCNN_CONSOLE_H
 #define RIFE_NCNN_CONSOLE_H
+
 #include <stdarg.h>
-
 #include "plat.h"
-#include "progress.h"
-
 
 #define CURSOR_CLEAR_LINE "\033[2K"
 #define CURSOR_SHOW "\033[?25h"
 #define CURSOR_HIDE "\033[?25l"
 
-class _ConsoleIn
-{
-
-};
-
+// class _ConsoleIn
+// {
+// };
 
 class Console
 {
