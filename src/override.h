@@ -1,6 +1,7 @@
 #ifndef FORCE_LOG_OVERRIDE_H
 #define FORCE_LOG_OVERRIDE_H
 
+#include "plat.h"
 #include "log.h"
 
 #ifdef NCNN_LOGE

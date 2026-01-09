@@ -112,6 +112,7 @@ public:
     // update with extra info
     void update(bool store_extra = false, const char* extra = nullptr)
     {
+        if (!enabled) return;
         lock.lock();
         double time_now, time_delta;
         _get_effective_time(time_now, time_delta);
@@ -121,11 +122,13 @@ public:
 
     void refresh(bool store_extra = false, const char* extra = nullptr)
     {
+        if (!enabled) return;
         _refresh(store_extra, extra);
     }
 
     void on_paused()
     {
+        if (!enabled) return;
         lock.lock();
         paused_start_time = get_timestamp();
         lock.unlock();
@@ -133,6 +136,7 @@ public:
 
     void on_resumed()
     {
+        if (!enabled) return;
         // paused_start_time may already be consumed by _get_delta_time()
         // when auto_fresh is running during PAUSED
         if (paused_start_time == 0) return;
@@ -226,9 +230,8 @@ private:
         }
         this->dynamic_length = dynamic_length;
 
-        console.progress_start(fixed_length + dynamic_length);
+        Console::ProgressGuard guard(console, fixed_length + dynamic_length);
         console.pprint(ss.str().c_str());
-        console.progress_end();
     }
 
     Mutex lock;

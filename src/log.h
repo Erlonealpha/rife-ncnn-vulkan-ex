@@ -1,63 +1,55 @@
 #ifndef RIFE_LOG_H
 #define RIFE_LOG_H
 
-#include "console.h"
+#include <cstdarg>
+#include <memory>
 
-#define LDEBUG 0
-#define LINFO 1
-#define LWARNING 2
-#define LERROR 3
+enum LogLevel {
+    LDEBUG = 0,
+    LINFO,
+    LWARNING,
+    LERROR
+};
 
-extern int gloglevel;
-extern bool gverbose;
-extern Console console;
+class Console;
 
-#define rprint(fmt,...)    console.rprint(fmt, ##__VA_ARGS__)
-#define rwprint(fmt,...)   console.rwprint(fmt, ##__VA_ARGS__)
+class Logger
+{
+public:
+    static Logger& instance();    
 
-#define rife_log(level, fmt,...) \
-    do { \
-        if (level >= gloglevel) { \
-            console.lock_acquire(); \
-            rprint(fmt, ##__VA_ARGS__); \
-            rprint("\n"); \
-            console.lock_release(); \
-        } \
-    } while (0)
-#define rife_logw(level, fmt,...) \
-    do { \
-        if (level >= gloglevel) { \
-            console.lock_acquire(); \
-            rwprint(fmt, ##__VA_ARGS__); \
-            rwprint(L"\n"); \
-            console.lock_release(); \
-        } \
-    } while (0)
-#define logverbose(fmt,...) \
-    do { \
-        if (gverbose) { \
-            console.lock_acquire(); \
-            rprint(fmt, ##__VA_ARGS__); \
-            rprint("\n"); \
-            console.lock_release(); \
-        } \
-    } while (0)
-#define logverbosew(fmt,...) \
-    do { \
-        if (gverbose) { \
-            console.lock_acquire(); \
-            rwprint(fmt, ##__VA_ARGS__); \
-            rwprint(L"\n"); \
-            console.lock_release(); \
-        } \
-    } while (0)
-#define loginfo(fmt,...)  rife_log(LINFO, fmt, ##__VA_ARGS__)
-#define logwarning(fmt,...) rife_log(LWARNING, fmt, ##__VA_ARGS__)
-#define logerror(fmt,...)  rife_log(LERROR, fmt, ##__VA_ARGS__)
-#define logdebug(fmt,...) rife_log(LDEBUG, fmt, ##__VA_ARGS__)
-#define loginfow(fmt,...) rife_logw(LINFO, fmt, ##__VA_ARGS__)
-#define logwarningw(fmt,...) rife_logw(LWARNING, fmt, ##__VA_ARGS__)
-#define logerrorw(fmt,...) rife_logw(LERROR, fmt, ##__VA_ARGS__)
-#define logdebugw(fmt,...) rife_logw(LDEBUG, fmt, ##__VA_ARGS__)
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&);
+
+    void init(Console& console, LogLevel level, bool verbose);
+
+    void set_level(LogLevel level);
+    void set_verbose(bool verbose);
+    LogLevel get_level() const;
+    bool get_verbose() const;
+
+    void vlog(const char* fmt, va_list ap);
+    void vwlog(const wchar_t* fmt, va_list ap);
+    void vlogverbose(const char* fmt, va_list ap);
+    void vwlogverbose(const wchar_t* fmt, va_list ap);
+    ~Logger();
+    private:
+    Logger();
+    class Impl;
+    std::unique_ptr<Impl> pimpl;
+};
+
+
+void loginfo(const char* fmt, ...);
+void logwarning(const char* fmt, ...);
+void logerror(const char* fmt, ...);
+void logdebug(const char* fmt, ...);
+void loginfow(const wchar_t* fmt, ...);
+void logwarningw(const wchar_t* fmt, ...);
+void logerrorw(const wchar_t* fmt, ...);
+void logdebugw(const wchar_t* fmt, ...);
+void logverbose(const char* fmt, ...);
+void logverbosew(const wchar_t* fmt, ...);
+
 
 #endif // RIFE_LOG_H

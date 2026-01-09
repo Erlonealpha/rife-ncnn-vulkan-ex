@@ -9,7 +9,6 @@
 #include <regex>
 #include <csignal>
 #include <atomic>
-#include <cstdarg>
 #include <functional>
 
 
@@ -40,11 +39,15 @@
 #include "rife.h"
 
 #include "filesystem_utils.h"
-#include "override.h"
+#include "log.h"
 #include "progress.h"
 #include "input.h"
 
+Console console;
 Progress progress{console};
+
+#define rprint(...) console.rprint(##__VA_ARGS__)
+#define rwprint(...) console.rwprint(##__VA_ARGS__)
 
 #if _WIN32
 #include <wchar.h>
@@ -92,7 +95,7 @@ static std::vector<int> parse_optarg_int_array(const wchar_t* optarg)
     return array;
 }
 
-static int parse_loglevel(const wchar_t* optarg)
+static LogLevel parse_loglevel(const wchar_t* optarg)
 {
     if (wcscmp(optarg, L"error") == 0)
         return LERROR;
@@ -124,7 +127,7 @@ static std::vector<int> parse_optarg_int_array(const char* optarg)
     return array;
 }
 
-static int parse_loglevel(const char* optarg)
+static LogLevel parse_loglevel(const char* optarg)
 {
     if (strcmp(optarg, "error") == 0)
         return LERROR;
@@ -163,6 +166,7 @@ static void print_usage()
     rprint("  -p progress          show progress (0=off, 1=on, default=1)\n");
     rprint("  -t progress-interval progress update interval in seconds (default=0.5)\n");
     rprint("  -l log-level         log level (info/warning/error/debug, default=info)\n\n");
+    console.end_print();
 }
 
 static int decode_image(const path_t& imagepath, ncnn::Mat& image, int* webp)
@@ -1111,7 +1115,7 @@ void* load(void* args)
         case CHECK_NEED_PAUSE:
             logdebug("load thread: into pause");
             process_controller.wait_resume();
-            logdebug("load thread: wait resum");
+            logdebug("load thread: wait resumed");
             break;
         case CHECK_OK:
             break;
@@ -1728,6 +1732,9 @@ int wmain(int argc, wchar_t** argv)
 int main(int argc, char** argv)
 #endif
 {
+    Logger& logger = Logger::instance();
+    logger.init(console, LINFO, false);
+
     std::signal(SIGINT, sigint_handler);
 
     path_t input0path;
@@ -1742,8 +1749,8 @@ int main(int argc, char** argv)
     std::vector<int> jobs_proc;
     int jobs_save = 2;
     int raw_output = 0;
-    int log_level = LINFO;
-    int verbose = 0;
+    LogLevel log_level = LINFO;
+    bool verbose = false;
     int tta_mode = 0;
     int tta_temporal_mode = 0;
     int uhd_mode = 0;
@@ -1888,8 +1895,8 @@ int main(int argc, char** argv)
     }
 #endif // _WIN32
 
-    gloglevel = log_level;
-    gverbose = verbose;
+    logger.set_level(log_level);
+    logger.set_verbose(verbose);
 
     logdebug("rife-ncnn-vulkan-ex start");
 
@@ -2149,12 +2156,19 @@ int main(int argc, char** argv)
         }
     }
 
-    if (!enable_progress) 
+    if (!console.is_console())
+    {
+        enable_progress = 0;
+    }
+
+    if (!enable_progress)
     {
         progress.enabled = false;
     }
     else
     {
+        progress.interval = progress_interval;
+        progress.set_total(total);
         // hide cursor
         console.show_cursor(false);
         // register progress info update callback
@@ -2197,13 +2211,11 @@ int main(int argc, char** argv)
             {
                 console.show_cursor(true);
             });
-    }
-    progress.interval = progress_interval;
-    progress.set_total(total);
-    if (skipped > 0)
-    {
-        progress.update(skipped, skipped, skipped, true);
-        loginfo("skipped %d frames", skipped);
+        if (skipped > 0)
+        {
+            progress.update(skipped, skipped, skipped, true);
+            loginfo("skipped %d frames", skipped);
+        }
     }
 
     path_t modeldir = sanitize_dirpath(model);
@@ -2223,15 +2235,15 @@ int main(int argc, char** argv)
     process_controller.register_callback("ImagePoolCleanUp", STATE_STOPPED | STATE_INTERRUPTED | STATE_FINISHED,
                                         [](int state) { imagepool.cleanup(); });
 
-    // use g_ncnn_info_suppressed and NCNN_LOGE(...) log_if_not_g_ncnn_info_suppressed
-    // instead of NCNN_LOGE(...) logwarning(...)
+    // use logger.ncnn_info_suppressed and NCNN_LOGE(...) log_if_not_ncnn_info_suppressed
+    // instead of NCNN_LOGE(...) log_ncnn_error(...)
     // better design maybe
-    bool show_info = log_level >= LINFO;
+    bool show_info = log_level <= LINFO;
     if (!show_info)
-        gloglevel = LERROR;
+        logger.set_level(LERROR);
     ncnn::create_gpu_instance(); // NCNN_LOGE("gpu info");
     if (!show_info)
-        gloglevel = log_level;
+        logger.set_level(log_level);
 
     if (gpuid.empty())
     {
@@ -2499,7 +2511,8 @@ int main(int argc, char** argv)
 
         progress_auto_fresh_thread.join();
 
-        progress.refresh(); // manually refresh last time
+        if (progress.enabled)
+            progress.refresh(); // manually refresh last time
 
         #ifdef _WIN32
         CancelIoEx(hStdIn, NULL); // cancel input thread blocking read
